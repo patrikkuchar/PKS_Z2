@@ -39,7 +39,8 @@ class Sender:
     def establish_com(self):
         syn_P = self.create_SYN()
 
-        self.TARGET_IP = "127.0.0.1"
+        #self.TARGET_IP = "127.0.0.1"
+        self.TARGET_IP = "192.168.0.130"
         # UDP_IP = "192.168.0.130"
         self.TARGET_PORT = 5005
 

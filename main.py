@@ -5,9 +5,13 @@ import keyboard
 
 def thread_waiting_for_input():
 
-    while receiver.receiverInput():
+    while receiver.getReceiverInput():
         if keyboard.read_key() == "space":
-            s = input("Prajete si začať komunikáciu ?:")
+            s = input("Prajete si začať komunikáciu ? (y/n):")
+            if s != "y":
+                continue
+            receiver.setActiveClass(False)
+
             sender.establish_com()
             break
 
@@ -21,9 +25,9 @@ receiver = rcv.Receiver(MY_PORT)
 sender = snd.Sender()
 
 t1 = threading.Thread(target=thread_waiting_for_input, name="t1")
-t2 = threading.Thread(target=receiver.waiting_for_packet, name="t2")
+
+receiver.waiting_for_packet()
 
 t1.start()
-t2.start()
 
 

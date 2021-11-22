@@ -13,7 +13,8 @@ class Receiver:
         # print(local_ip)
 
         # UDP_IP = local_ip
-        self.MY_IP = "127.0.0.1"
+        #self.MY_IP = "127.0.0.1"
+        self.MY_IP = "192.168.0.166"
         self.MY_PORT = port
 
         self.sock = socket.socket(socket.AF_INET,  # Internet
@@ -22,6 +23,13 @@ class Receiver:
 
         self.receiverInput = True
 
+        self.activeClass = True
+
+    def getReceiverInput(self):
+        return self.receiverInput
+
+    def setActiveClass(self, value):
+        self.activeClass = value
 
     def create_ACK(self, SEQ):
         body = int.to_bytes(4, 1, "big")
@@ -29,8 +37,6 @@ class Receiver:
         body += int.to_bytes(SEQ, 4, "big")
         return body
 
-    def getReceiverInput(self):
-        return self.receiverInput
 
     def send_packet(self, body, addr):
         self.sock.sendto(body, addr)
