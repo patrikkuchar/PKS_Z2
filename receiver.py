@@ -20,12 +20,17 @@ class Receiver:
                              socket.SOCK_DGRAM)  # UDP
         self.sock.bind((self.MY_IP, self.MY_PORT))
 
+        self.receiverInput = True
+
 
     def create_ACK(self, SEQ):
         body = int.to_bytes(4, 1, "big")
 
         body += int.to_bytes(SEQ, 4, "big")
         return body
+
+    def getReceiverInput(self):
+        return self.receiverInput
 
     def send_packet(self, body, addr):
         self.sock.sendto(body, addr)
@@ -44,6 +49,7 @@ class Receiver:
             type = self.get_type(data)
 
             if type == 0: #SYN
+                self.receiverInput = False
                 ack_P = self.create_ACK(self.get_type(data))
                 self.send_packet(ack_P, addr)
 
