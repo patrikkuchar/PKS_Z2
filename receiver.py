@@ -25,6 +25,8 @@ class Receiver:
 
         self.activeClass = True
 
+        self.arrived_SEQ = 0
+
     def getReceiverInput(self):
         return self.receiverInput
 
@@ -54,13 +56,12 @@ class Receiver:
     def cancel_keepAlive_waiting(self):
         self.sock.sendto(int.to_bytes(254, 1, "big"), (self.MY_IP, self.MY_PORT))
 
-    def exceeded_waiting_for_keepAlive(self):
+    def exceeded_waiting_for_keepAlive(self, ex_SEQ):
 
-        time.sleep(5)
+        time.sleep(5.1)
 
-        if not self.keepAlive_arrived:
+        if ex_SEQ == self.arrived_SEQ:
             self.cancel_keepAlive_waiting()
-        self.keepAlive_arrived = False
 
 
     def waiting_for_packet(self):
@@ -86,12 +87,16 @@ class Receiver:
             if type == 5: #KeepAlive
                 print("KeepAlive packet prijatý")
 
+                SEQ = self.get_SEQ(data)
+
+                self.arrived_SEQ = SEQ
+
                 self.keepAlive_arrived = True
 
-                ack_P = self.create_ACK(self.get_type(data))
+                ack_P = self.create_ACK(SEQ)
                 self.send_packet(ack_P, addr)
 
-                threading.Timer(0.01, self.exceeded_waiting_for_keepAlive).start()
+                threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(SEQ, )).start()
 
 
 

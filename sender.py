@@ -44,7 +44,7 @@ class Sender:
             self.SEQ_num += 1
             print("KeepAlive packet poslaný")
             self.send_packet(self.create_KeepAlive(self.SEQ_num))
-            time.sleep(0.1)
+            time.sleep(0.05)
             if not self.keepAlive_arrived:
                 break
         print("\nKomunikácia prerušená!!!!!")
