@@ -52,12 +52,11 @@ class Receiver:
         self.sock.sendto(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
 
     def cancel_keepAlive_waiting(self):
-        self.activeClass = False
         self.sock.sendto(int.to_bytes(254, 1, "big"), (self.MY_IP, self.MY_PORT))
 
     def exceeded_waiting_for_keepAlive(self):
 
-        time.sleep(5.1)
+        time.sleep(5)
 
         if not self.keepAlive_arrived:
             self.cancel_keepAlive_waiting()
@@ -65,6 +64,7 @@ class Receiver:
 
 
     def waiting_for_packet(self):
+        self.activeClass = True
         while self.activeClass:
             data, addr = self.sock.recvfrom(1500)  # buffer size is 1024 bytes
 
@@ -88,10 +88,12 @@ class Receiver:
 
                 self.keepAlive_arrived = True
 
-                threading.Thread(target=self.exceeded_waiting_for_keepAlive).start()
-
                 ack_P = self.create_ACK(self.get_type(data))
                 self.send_packet(ack_P, addr)
+
+                threading.Timer(0.01, self.exceeded_waiting_for_keepAlive).start()
+
+
 
             if type == 254: #KeepAlive not arrived
                 print("KeepAlive packet nedorazil")
