@@ -56,6 +56,8 @@ class Receiver(Packet):
         self.MY_IP = "192.168.0.166"
         self.MY_PORT = port
 
+
+
         self.sock = socket.socket(socket.AF_INET,  # Internet
                              socket.SOCK_DGRAM)  # UDP
         self.sock.bind((self.MY_IP, self.MY_PORT))
@@ -68,6 +70,9 @@ class Receiver(Packet):
 
     def getTargetSocket(self):
         return self.TARGET_ADDR
+
+    def changeBind(self):
+        self.sock.bind((self.MY_IP, self.MY_PORT2))
 
     def getReceiverInput(self):
         return self.receiverInput
@@ -111,6 +116,7 @@ class Receiver(Packet):
 
                 #uložím si adresu
                 sender.set_TARGET_ADDR(addr)
+                self.MY_PORT2 = addr[1]
 
 
                 print("\n\nKomunikácia nadviazaná!")
@@ -280,9 +286,10 @@ def thread_waiting_for_input():
 
         if inputMode == 0: #zacat komunikaciu
             if s == "y":
-                receiver.setActiveClass(False)
+                #receiver.setActiveClass(False)
 
                 sender.establish_com()
+                receiver.changeBind()
                 #cancel_t2.start()
 
 
