@@ -65,7 +65,7 @@ class Receiver:
 
     def exceeded_waiting_for_keepAlive(self, ex_SEQ):
 
-        time.sleep(5.5)
+        time.sleep(5.4)
 
         if ex_SEQ >= self.arrived_SEQ:
             self.cancel_keepAlive_waiting()
@@ -88,6 +88,8 @@ class Receiver:
                 print("IP adresa odosielateľa: " + addr[0])
                 print("Port odosielateľa: " + str(addr[1]) + "\n\n")
 
+                print("Ako si prajete pokračovať:\na) Poslať správu\nb) Poslať súbor\nc) Ukončiť komunikáciu\n")
+
                 inputMode = 1 #poslanie suboru
 
                 self.keepAlive_arrived = False
@@ -107,6 +109,7 @@ class Receiver:
                 self.send_packet(ack_P, addr)
 
                 threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(SEQ, )).start()
+
 
 
 
@@ -151,18 +154,20 @@ class Sender:
         body += int.to_bytes(SEQ, 4, "big") #seq
         return body
 
+
     def get_SEQ(self, body):
         return int.from_bytes(body[1:5], "big")
 
     def send_packet(self, body):
         self.sock.sendto(body, (self.TARGET_IP, self.TARGET_PORT))
 
+
     def set_enabled_keepAlive(self, value):
         self.enabled_keepAlive = value
 
     def exceeded_waiting_for_keepAlive(self, ex_SEQ):
         while True:
-            time.sleep(5.5)
+            time.sleep(5.4)
 
             if ex_SEQ >= self.arrived_SEQ:
                 self.keepAlive_arrived = False
@@ -197,8 +202,10 @@ class Sender:
         global inputMode
         data, addr = self.sock.recvfrom(1500)
         print("\n\nKomunikácia nadviazaná!")
-        print("IP adresa odosielateľa: " + addr[0])
-        print("Port odosielateľa: " + str(addr[1]) + "\n\n")
+        print("IP adresa prijímateľa: " + addr[0])
+        print("Port prijímateľa: " + str(addr[1]) + "\n\n")
+
+        print("Ako si prajete pokračovať:\na) Poslať správu\nb) Poslať súbor\nc) Ukončiť komunikáciu\n")
 
         inputMode = 1 #poslanie suboru
 
@@ -231,21 +238,36 @@ class Sender:
 
 
 def thread_waiting_for_input():
+    global inputMode
+    while True:
+        s = input()
 
-    s = input()
+        if inputMode == 0: #zacat komunikaciu
+            if s == "y":
+                receiver.setActiveClass(False)
 
-    if inputMode == 0: #zacat komunikaciu
-        if s == "y":
-            receiver.setActiveClass(False)
+                sender.establish_com()
+                cancel_t2.start()
 
-            sender.establish_com()
-            cancel_t2.start()
 
-    elif inputMode == 1: #poslat subor
-        print("posielanie suboru")
+        elif inputMode == 1: #poslat subor
+            print("posielanie suboru")
 
-        sender.set_enabled_keepAlive(False)  # prestane posielať keepAlive
-        receiver.cancel_waiting()  # prestane očakávať vstup
+            if s == "a": #sprava
+                print("Zadajte správu: ", end="")
+                inputMode = 2
+
+            if s == "b": #subor
+                print("Zadajte cestu k súboru: ", end="")
+                inputMode = 3
+
+            if s == "c": #konec
+                print("Koneeeeec")
+
+            #sender.set_enabled_keepAlive(False)  # prestane posielať keepAlive
+            #receiver.cancel_waiting()  # prestane očakávať vstup
+
+
 
 
 
@@ -260,13 +282,13 @@ sender = Sender()#snd.Sender()
 
 inputMode = 0
 
-t1 = threading.Thread(target=thread_waiting_for_input)
+t_input = threading.Thread(target=thread_waiting_for_input)
 #t2 = threading.Thread(target=receiver.waiting_for_packet)
 cancel_t2 = threading.Thread(target=receiver.cancel_waiting)
 
 print("Prajete si začať komunikáciu ? (y/n) ", end="")
 #t2.start()
-t1.start()
+t_input.start()
 
 receiver.waiting_for_packet()
 
