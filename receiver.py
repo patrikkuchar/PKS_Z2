@@ -88,7 +88,7 @@ class Receiver:
 
 
             if type == 5: #KeepAlive
-                print("KeepAlive packet prijatý")
+                #print("KeepAlive packet prijatý")
 
                 SEQ = self.get_SEQ(data)
 

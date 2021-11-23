@@ -18,12 +18,13 @@ def thread_waiting_for_input_synCom():
 
 def thread_waiting_for_input_send():
     print("\nPre začiatok písania stlačte medzerník.\n")
+    receiver.setReceiverInput(True)
+    while receiver.getReceiverInput():
+        if keyboard.read_key() == "space":
 
-    if keyboard.read_key() == "space":
 
-        receiver.setReceiverInput(True)
-        sender.set_enabled_keepAlive(False) #prestane posielať keepAlive
-        receiver.cancel_waiting() #prestane očakávať vstup
+            sender.set_enabled_keepAlive(False) #prestane posielať keepAlive
+            receiver.cancel_waiting() #prestane očakávať vstup
 
 
 

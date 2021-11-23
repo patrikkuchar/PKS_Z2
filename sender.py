@@ -51,7 +51,7 @@ class Sender:
     def waiting_for_keepAlive_packet(self):
         data, addr = self.sock.recvfrom(1500)
         self.arrived_SEQ = self.get_SEQ(data)
-        print(str(self.arrived_SEQ))
+        #print(str(self.arrived_SEQ))
 
     def thread_keepAlive(self):
         self.enabled_keepAlive = True
