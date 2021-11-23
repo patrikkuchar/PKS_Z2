@@ -40,6 +40,15 @@ class Packet:
     def get_SEQ(self, body):
         return int.from_bytes(body[1:5], "big")
 
+    def send_socket(self, socket):
+        self.sck = socket
+
+    def sendPacket(self, body, addr):
+        self.sck.sendto(body, addr)
+
+    def waitForPacket(self):
+        return self.sck.recvfrom(1500)
+
 
 class Receiver(Packet):
     def __init__(self, port):
@@ -68,6 +77,8 @@ class Receiver(Packet):
 
         self.arrived_SEQ = 0
 
+        self.synchronized = False
+
     def getTargetSocket(self):
         return self.TARGET_ADDR
 
@@ -84,15 +95,18 @@ class Receiver(Packet):
         self.activeClass = value
 
     def send_packet(self, body, addr):
-        self.sock.sendto(body, addr)
+        self.sendPacket(body, addr)
+        #self.sock.sendto(body, addr)
 
 
     def cancel_waiting(self):
         self.activeClass = False
-        self.sock.sendto(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
+        self.sendPacket(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
+        #self.sock.sendto(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
 
     def cancel_keepAlive_waiting(self):
-        self.sock.sendto(int.to_bytes(254, 1, "big"), (self.MY_IP, self.MY_PORT))
+        self.sendPacket(int.to_bytes(254, 1, "big"), (self.MY_IP, self.MY_PORT))
+        #self.sock.sendto(int.to_bytes(254, 1, "big"), (self.MY_IP, self.MY_PORT))
 
     def exceeded_waiting_for_keepAlive(self, ex_SEQ):
 
@@ -105,11 +119,18 @@ class Receiver(Packet):
     def waiting_for_packet(self):
         self.activeClass = True
         while self.activeClass:
-            data, addr = self.sock.recvfrom(1500)  # buffer size is 1024 bytes
+            if self.synchronized:
+                data, addr = self.waitForPacket()
+            else:
+                data, addr = self.sock.recvfrom(1500)  # buffer size is 1024 bytes
 
             type = self.get_type(data)
 
             if type == 0: #SYN
+                self.synchronized = True
+
+                self.send_socket(self.sock)
+
                 self.receiverInput = False
                 ack_P = self.create_ACK(self.get_type(data))
                 self.send_packet(ack_P, addr)
@@ -186,7 +207,8 @@ class Sender(Packet):
         return int.from_bytes(body[1:5], "big")
 
     def send_packet(self, body):
-        self.sock.sendto(body, (self.TARGET_IP, self.TARGET_PORT))
+        self.sendPacket(body, (self.TARGET_IP, self.TARGET_PORT))
+        #self.sock.sendto(body, (self.TARGET_IP, self.TARGET_PORT))
 
     def send_message(self, message):
         self.message = message
@@ -219,7 +241,8 @@ class Sender(Packet):
             ex_SEQ += 1
 
     def waiting_for_keepAlive_packet(self):
-        data, addr = self.sock.recvfrom(1500)
+        data, addr = self.waitForPacket()
+        #data, addr = self.sock.recvfrom(1500)
         self.arrived_SEQ = self.get_SEQ(data)
         #print(str(self.arrived_SEQ))
 
@@ -242,7 +265,8 @@ class Sender(Packet):
 
 
     def waiting_for_SYN_packet(self):
-        data, addr = self.sock.recvfrom(1500)
+        data, addr = self.waitForPacket()
+        #data, addr = self.sock.recvfrom(1500)
         print("\n\nKomunikácia nadviazaná!")
         print("IP adresa prijímateľa: " + addr[0])
         print("Port prijímateľa: " + str(addr[1]) + "\n\n")
@@ -267,6 +291,7 @@ class Sender(Packet):
         #self.TARGET_IP = input("Zadajte IP adresu prijímateľa: ")
         #self.TARGET_PORT = input("Zadajte port prijímateľa: ")
 
+        self.send_socket(self.sock)
 
         self.send_packet(syn_P)
 
