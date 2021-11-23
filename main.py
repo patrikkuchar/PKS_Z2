@@ -47,6 +47,11 @@ class Packet_creator:
         body += bytes(message, "utf-8")
         return body
 
+    def create_KeepAliveACK(self, SEQ):
+        body = int.to_bytes(8, 1, "big") #type
+        body += int.to_bytes(SEQ, 4, "big") #seq
+        return body
+
 
     def get_type(self, body):
         return body[0]
@@ -177,7 +182,7 @@ class Receiver:
 
                 self.keepAlive_arrived = True
 
-                ack_P = packet_creator.create_ACK(SEQ)
+                ack_P = packet_creator.create_KeepAliveACK(SEQ)
                 self.send_packet(ack_P, addr)
 
                 threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(SEQ, )).start()
@@ -186,7 +191,8 @@ class Receiver:
                 print("Sprava dorazila")
                 print(data[5:])
 
-
+            if type == 8: #keepAlive ACK
+                sender.set_arrived_SEQ(data)
 
 
             if type == 254: #KeepAlive not arrived
@@ -215,6 +221,8 @@ class Sender:
         self.message = ""
         self.path = ""
         self.file = ""
+
+        self.arrived_SEQ = 1
 
     def set_TARGET_ADDR(self, addr):
         self.TARGET_IP = addr[0]
@@ -257,10 +265,13 @@ class Sender:
 
             ex_SEQ += 1
 
-    def waiting_for_keepAlive_packet(self):
-        data, addr = packet_creator.waitForPacket()
-        #data, addr = self.sock.recvfrom(1500)
-        self.arrived_SEQ = self.get_SEQ(data)
+    def set_arrived_SEQ(self, data):
+        self.arrived_SEQ = packet_creator.get_SEQ(data)
+
+    #def waiting_for_keepAlive_packet(self):
+        #data, addr = packet_creator.waitForPacket()
+        ##data, addr = self.sock.recvfrom(1500)
+        #self.arrived_SEQ = self.get_SEQ(data)
         #print(str(self.arrived_SEQ))
 
     def thread_keepAlive(self):
@@ -268,7 +279,7 @@ class Sender:
         self.keepAlive_arrived = True
         threading.Timer(0.5, self.exceeded_waiting_for_keepAlive, args=(0, )).start()
         while self.enabled_keepAlive:
-            threading.Thread(target=self.waiting_for_keepAlive_packet).start()
+            #threading.Thread(target=self.waiting_for_keepAlive_packet).start()
             time.sleep(5)
             self.SEQ_num += 1
             print("KeepAlive packet poslaný")
