@@ -11,9 +11,9 @@ def thread_waiting_for_input():
             if s != "y":
                 continue
             receiver.setActiveClass(False)
-            cancel_t2.start()
 
             sender.establish_com()
+            cancel_t2.start()
             break
 
 
@@ -31,6 +31,10 @@ cancel_t2 = threading.Thread(target=receiver.cancel_waiting, name="cancel_t2")
 
 t1.start()
 t2.start()
+
+t2.join()
+
+print("KONEC PROGRAMU")
 
 
 

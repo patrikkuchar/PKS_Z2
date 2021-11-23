@@ -8,6 +8,12 @@ class Sender:
         self.sock = socket.socket(socket.AF_INET,  # Internet
                              socket.SOCK_DGRAM)  # UDP
 
+        self.SEQ_num = 0
+
+        self.message = ""
+        self.path = ""
+        self.file = ""
+
     def create_SYN(self):
         body = int.to_bytes(0, 1, "big") #type
         body += int.to_bytes(0, 4, "big") #seq
@@ -25,16 +31,23 @@ class Sender:
     def send_packet(self, body):
         self.sock.sendto(body, (self.TARGET_IP, self.TARGET_PORT))
 
-    def waiting_for_packet(self):
+    def thread_keepAlive(self):
+        while True:
+            self.SEQ_num += 1
+            self.send_packet(self.create_KeepAlive(self.SEQ_num))
+            time.sleep(5)
+
+
+    def waiting_for_SYN_packet(self):
         data, addr = self.sock.recvfrom(1500)
-        print("Komunikácia nadviazaná!")
+        print("\n\nKomunikácia nadviazaná!")
         print("IP adresa odosielateľa: " + addr[0])
-        print("Port odosielateľa: " + str(addr[1]))
+        print("Port odosielateľa: " + str(addr[1]) + "\n\n")
+
+        t1 = threading.Thread(target=self.thread_keepAlive, name="t1").start()
 
 
 
-        print(data)
-        print(addr)
 
     def establish_com(self):
         syn_P = self.create_SYN()
@@ -50,7 +63,7 @@ class Sender:
 
         self.send_packet(syn_P)
 
-        self.waiting_for_packet()
+        self.waiting_for_SYN_packet()
 
 
 
