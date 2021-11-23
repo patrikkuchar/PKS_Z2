@@ -2,7 +2,7 @@ import threading
 import socket
 import time
 
-class Packet:
+class Packet_creator:
     def changeInputMode(self, value):
         global inputMode
         inputMode = value
@@ -50,7 +50,7 @@ class Packet:
         return self.sck.recvfrom(1500)
 
 
-class Receiver(Packet):
+class Receiver:
     def __init__(self, port):
         self.message = ""
         self.path = ""
@@ -82,8 +82,6 @@ class Receiver(Packet):
     def getTargetSocket(self):
         return self.TARGET_ADDR
 
-    def changeBind(self):
-        self.sock.bind((self.MY_IP, self.MY_PORT2))
 
     def getReceiverInput(self):
         return self.receiverInput
@@ -95,17 +93,17 @@ class Receiver(Packet):
         self.activeClass = value
 
     def send_packet(self, body, addr):
-        self.sendPacket(body, addr)
+        packet_creator.sendPacket(body, addr)
         #self.sock.sendto(body, addr)
 
 
     def cancel_waiting(self):
         self.activeClass = False
-        self.sendPacket(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
+        packet_creator.sendPacket(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
         #self.sock.sendto(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
 
     def cancel_keepAlive_waiting(self):
-        self.sendPacket(int.to_bytes(254, 1, "big"), (self.MY_IP, self.MY_PORT))
+        packet_creator.sendPacket(int.to_bytes(254, 1, "big"), (self.MY_IP, self.MY_PORT))
         #self.sock.sendto(int.to_bytes(254, 1, "big"), (self.MY_IP, self.MY_PORT))
 
     def exceeded_waiting_for_keepAlive(self, ex_SEQ):
@@ -120,19 +118,19 @@ class Receiver(Packet):
         self.activeClass = True
         while self.activeClass:
             if self.synchronized:
-                data, addr = self.waitForPacket()
+                data, addr = packet_creator.waitForPacket()
             else:
                 data, addr = self.sock.recvfrom(1500)  # buffer size is 1024 bytes
 
-            type = self.get_type(data)
+            type = packet_creator.get_type(data)
 
             if type == 0: #SYN
                 self.synchronized = True
 
-                self.send_socket(self.sock)
+                packet_creator.send_socket(self.sock)
 
                 self.receiverInput = False
-                ack_P = self.create_ACK(self.get_type(data))
+                ack_P = packet_creator.create_ACK(packet_creator.get_type(data))
                 self.send_packet(ack_P, addr)
 
                 #uložím si adresu
@@ -146,7 +144,7 @@ class Receiver(Packet):
 
                 print("Ako si prajete pokračovať:\na) Poslať správu\nb) Poslať súbor\nc) Ukončiť komunikáciu\n")
 
-                super().changeInputMode(1) #poslanie suboru
+                packet_creator.changeInputMode(1) #poslanie suboru
 
                 self.keepAlive_arrived = False
                 threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(0, )).start()
@@ -155,13 +153,13 @@ class Receiver(Packet):
             if type == 5: #KeepAlive
                 print("KeepAlive packet prijatý")
 
-                SEQ = self.get_SEQ(data)
+                SEQ = packet_creator.get_SEQ(data)
 
                 self.arrived_SEQ = SEQ
 
                 self.keepAlive_arrived = True
 
-                ack_P = self.create_ACK(SEQ)
+                ack_P = packet_creator.create_ACK(SEQ)
                 self.send_packet(ack_P, addr)
 
                 threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(SEQ, )).start()
@@ -188,7 +186,7 @@ class Receiver(Packet):
 
 
 
-class Sender(Packet):
+class Sender:
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET,  # Internet
                              socket.SOCK_DGRAM)  # UDP
@@ -207,20 +205,20 @@ class Sender(Packet):
         return int.from_bytes(body[1:5], "big")
 
     def send_packet(self, body):
-        self.sendPacket(body, (self.TARGET_IP, self.TARGET_PORT))
+        packet_creator.sendPacket(body, (self.TARGET_IP, self.TARGET_PORT))
         #self.sock.sendto(body, (self.TARGET_IP, self.TARGET_PORT))
 
     def send_message(self, message):
         self.message = message
 
         self.SEQ_num += 1
-        msg_P = self.create_MSG(self.SEQ_num, message)
+        msg_P = packet_creator.create_MSG(self.SEQ_num, message)
 
         self.send_packet(msg_P)
 
         print("Správa úspešne odoslaná.")
 
-        super().changeInputMode(1)
+        packet_creator.changeInputMode(1)
 
 
 
@@ -241,7 +239,7 @@ class Sender(Packet):
             ex_SEQ += 1
 
     def waiting_for_keepAlive_packet(self):
-        data, addr = self.waitForPacket()
+        data, addr = packet_creator.waitForPacket()
         #data, addr = self.sock.recvfrom(1500)
         self.arrived_SEQ = self.get_SEQ(data)
         #print(str(self.arrived_SEQ))
@@ -255,7 +253,7 @@ class Sender(Packet):
             time.sleep(5)
             self.SEQ_num += 1
             print("KeepAlive packet poslaný")
-            self.send_packet(self.create_KeepAlive(self.SEQ_num))
+            self.send_packet(packet_creator.create_KeepAlive(self.SEQ_num))
 
             if not self.keepAlive_arrived:
                 print("\nKomunikácia prerušená!\n")
@@ -265,7 +263,7 @@ class Sender(Packet):
 
 
     def waiting_for_SYN_packet(self):
-        data, addr = self.waitForPacket()
+        data, addr = packet_creator.waitForPacket()
         #data, addr = self.sock.recvfrom(1500)
         print("\n\nKomunikácia nadviazaná!")
         print("IP adresa prijímateľa: " + addr[0])
@@ -273,7 +271,7 @@ class Sender(Packet):
 
         print("Ako si prajete pokračovať:\na) Poslať správu\nb) Poslať súbor\nc) Ukončiť komunikáciu\n")
 
-        self.changeInputMode(1) #poslanie suboru
+        packet_creator.changeInputMode(1) #poslanie suboru
 
         threading.Thread(target=self.thread_keepAlive, name="t1").start()
 
@@ -281,7 +279,7 @@ class Sender(Packet):
 
 
     def establish_com(self):
-        syn_P = self.create_SYN()
+        syn_P = packet_creator.create_SYN()
 
         #self.TARGET_IP = "127.0.0.1"
         self.TARGET_IP = "192.168.0.130"
@@ -291,7 +289,7 @@ class Sender(Packet):
         #self.TARGET_IP = input("Zadajte IP adresu prijímateľa: ")
         #self.TARGET_PORT = input("Zadajte port prijímateľa: ")
 
-        self.send_socket(self.sock)
+        packet_creator.send_socket(self.sock)
 
         self.send_packet(syn_P)
 
@@ -314,7 +312,6 @@ def thread_waiting_for_input():
                 #receiver.setActiveClass(False)
 
                 sender.establish_com()
-                receiver.changeBind()
                 #cancel_t2.start()
 
 
@@ -349,6 +346,7 @@ def thread_waiting_for_input():
 
 MY_PORT = int(input("Zadajte port, na ktorom očakávate komunikáciu: "))
 
+packet_creator = Packet_creator()
 receiver = Receiver(MY_PORT)#rcv.Receiver(MY_PORT)
 sender = Sender()#snd.Sender()
 
