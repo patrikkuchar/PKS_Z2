@@ -14,6 +14,8 @@ def thread_waiting_for_input_synCom():
 
             sender.establish_com()
             cancel_t2.start()
+
+            t3.start()
             break
 
 def thread_waiting_for_input_send():
@@ -40,10 +42,16 @@ t1 = threading.Thread(target=thread_waiting_for_input_synCom, name="t1")
 t2 = threading.Thread(target=receiver.waiting_for_packet, name="t2")
 cancel_t2 = threading.Thread(target=receiver.cancel_waiting, name="cancel_t2")
 
+
+t3 = threading.Thread(target=thread_waiting_for_input_send)
+
+
 t1.start()
 t2.start()
 
 t2.join()
+
+
 
 
 
