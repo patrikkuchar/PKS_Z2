@@ -29,25 +29,45 @@ class Sender:
         body += int.to_bytes(SEQ, 4, "big") #seq
         return body
 
+    def get_SEQ(self, body):
+        return int.from_bytes(body[1:5], "big")
+
     def send_packet(self, body):
         self.sock.sendto(body, (self.TARGET_IP, self.TARGET_PORT))
 
+    def set_enabled_keepAlive(self, value):
+        self.enabled_keepAlive = value
+
+    def exceeded_waiting_for_keepAlive(self, ex_SEQ):
+        while True:
+            time.sleep(6)
+
+            if ex_SEQ >= self.arrived_SEQ:
+                self.keepAlive_arrived = False
+                break
+
+            ex_SEQ += 1
+
     def waiting_for_keepAlive_packet(self):
         data, addr = self.sock.recvfrom(1500)
-        self.keepAlive_arrived = True
+        self.arrived_SEQ = self.get_SEQ(data)
+        print(str(self.arrived_SEQ))
 
     def thread_keepAlive(self):
-        while True:
-            self.keepAlive_arrived = False
+        self.enabled_keepAlive = True
+        self.keepAlive_arrived = True
+        threading.Timer(0.5, self.exceeded_waiting_for_keepAlive, args=(0, )).start()
+        while self.enabled_keepAlive:
             t2 = threading.Thread(target=self.waiting_for_keepAlive_packet).start()
             time.sleep(5)
             self.SEQ_num += 1
-            print("KeepAlive packet poslaný")
+            #print("KeepAlive packet poslaný")
             self.send_packet(self.create_KeepAlive(self.SEQ_num))
-            time.sleep(0.05)
+
             if not self.keepAlive_arrived:
+                print("\nKomunikácia prerušená!\n")
                 break
-        print("\nKomunikácia prerušená!!!!!")
+
 
 
 
@@ -57,7 +77,7 @@ class Sender:
         print("IP adresa odosielateľa: " + addr[0])
         print("Port odosielateľa: " + str(addr[1]) + "\n\n")
 
-        t1 = threading.Thread(target=self.thread_keepAlive, name="t1").start()
+        threading.Thread(target=self.thread_keepAlive, name="t1").start()
 
 
 

@@ -30,6 +30,9 @@ class Receiver:
     def getReceiverInput(self):
         return self.receiverInput
 
+    def setReceiverInput(self, value):
+        self.receiverInput = value
+
     def setActiveClass(self, value):
         self.activeClass = value
 
@@ -58,9 +61,9 @@ class Receiver:
 
     def exceeded_waiting_for_keepAlive(self, ex_SEQ):
 
-        time.sleep(5.1)
+        time.sleep(6)
 
-        if ex_SEQ == self.arrived_SEQ:
+        if ex_SEQ >= self.arrived_SEQ:
             self.cancel_keepAlive_waiting()
 
 
@@ -76,12 +79,12 @@ class Receiver:
                 ack_P = self.create_ACK(self.get_type(data))
                 self.send_packet(ack_P, addr)
 
-                print("Komunikácia nadviazaná!")
+                print("\n\nKomunikácia nadviazaná!")
                 print("IP adresa odosielateľa: " + addr[0])
-                print("Port odosielateľa: " + str(addr[1]))
+                print("Port odosielateľa: " + str(addr[1]) + "\n\n")
 
                 self.keepAlive_arrived = False
-                threading.Thread(target=self.exceeded_waiting_for_keepAlive).start()
+                threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(0, )).start()
 
 
             if type == 5: #KeepAlive
@@ -101,8 +104,8 @@ class Receiver:
 
 
             if type == 254: #KeepAlive not arrived
-                print("KeepAlive packet nedorazil")
-                print("Komunikácia prerušená")
+                #print("KeepAlive packet nedorazil")
+                print("\nKomunikácia prerušená!\n")
                 break
 
 
