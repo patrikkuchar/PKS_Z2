@@ -65,7 +65,7 @@ class Receiver:
 
     def exceeded_waiting_for_keepAlive(self, ex_SEQ):
 
-        time.sleep(6)
+        time.sleep(5.5)
 
         if ex_SEQ >= self.arrived_SEQ:
             self.cancel_keepAlive_waiting()
@@ -95,7 +95,7 @@ class Receiver:
 
 
             if type == 5: #KeepAlive
-                #print("KeepAlive packet prijatý")
+                print("KeepAlive packet prijatý")
 
                 SEQ = self.get_SEQ(data)
 
@@ -162,7 +162,7 @@ class Sender:
 
     def exceeded_waiting_for_keepAlive(self, ex_SEQ):
         while True:
-            time.sleep(6)
+            time.sleep(5.5)
 
             if ex_SEQ >= self.arrived_SEQ:
                 self.keepAlive_arrived = False
@@ -183,7 +183,7 @@ class Sender:
             threading.Thread(target=self.waiting_for_keepAlive_packet).start()
             time.sleep(5)
             self.SEQ_num += 1
-            #print("KeepAlive packet poslaný")
+            print("KeepAlive packet poslaný")
             self.send_packet(self.create_KeepAlive(self.SEQ_num))
 
             if not self.keepAlive_arrived:
@@ -231,22 +231,21 @@ class Sender:
 
 
 def thread_waiting_for_input():
-    print("Prajete si začať komunikáciu ? (y/n) ", end="")
-    while True:
-        s = input()
 
-        if inputMode == 0: #zacat komunikaciu
-            if s == "y":
-                receiver.setActiveClass(False)
+    s = input()
 
-                sender.establish_com()
-                cancel_t2.start()
+    if inputMode == 0: #zacat komunikaciu
+        if s == "y":
+            receiver.setActiveClass(False)
 
-        if inputMode == 1: #poslat subor
-            print("posielanie suboru")
+            sender.establish_com()
+            cancel_t2.start()
 
-            sender.set_enabled_keepAlive(False)  # prestane posielať keepAlive
-            receiver.cancel_waiting()  # prestane očakávať vstup
+    elif inputMode == 1: #poslat subor
+        print("posielanie suboru")
+
+        sender.set_enabled_keepAlive(False)  # prestane posielať keepAlive
+        receiver.cancel_waiting()  # prestane očakávať vstup
 
 
 
@@ -261,20 +260,15 @@ sender = Sender()#snd.Sender()
 
 inputMode = 0
 
-t1 = threading.Thread(target=thread_waiting_for_input, name="t1")
-t2 = threading.Thread(target=receiver.waiting_for_packet, name="t2")
-cancel_t2 = threading.Thread(target=receiver.cancel_waiting, name="cancel_t2")
+t1 = threading.Thread(target=thread_waiting_for_input)
+#t2 = threading.Thread(target=receiver.waiting_for_packet)
+cancel_t2 = threading.Thread(target=receiver.cancel_waiting)
 
-
-
-
-
+print("Prajete si začať komunikáciu ? (y/n) ", end="")
+#t2.start()
 t1.start()
-t2.start()
 
-t2.join()
-
-
+receiver.waiting_for_packet()
 
 
 
