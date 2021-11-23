@@ -72,6 +72,7 @@ class Receiver:
 
 
     def waiting_for_packet(self):
+        global inputMode
         self.activeClass = True
         while self.activeClass:
             data, addr = self.sock.recvfrom(1500)  # buffer size is 1024 bytes
@@ -87,7 +88,7 @@ class Receiver:
                 print("IP adresa odosielateľa: " + addr[0])
                 print("Port odosielateľa: " + str(addr[1]) + "\n\n")
 
-                t3.start()
+                inputMode = 1 #poslanie suboru
 
                 self.keepAlive_arrived = False
                 threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(0, )).start()
@@ -193,12 +194,13 @@ class Sender:
 
 
     def waiting_for_SYN_packet(self):
+        global inputMode
         data, addr = self.sock.recvfrom(1500)
         print("\n\nKomunikácia nadviazaná!")
         print("IP adresa odosielateľa: " + addr[0])
         print("Port odosielateľa: " + str(addr[1]) + "\n\n")
 
-        t3.start()
+        inputMode = 1 #poslanie suboru
 
         threading.Thread(target=self.thread_keepAlive, name="t1").start()
 
@@ -228,33 +230,24 @@ class Sender:
 
 
 
+def thread_waiting_for_input():
+    print("Prajete si začať komunikáciu ? (y/n) ", end="")
+    while True:
+        s = input()
 
+        if inputMode == 0: #zacat komunikaciu
+            if s == "y":
+                receiver.setActiveClass(False)
 
+                sender.establish_com()
+                cancel_t2.start()
 
-def thread_waiting_for_input_synCom():
-    print("Pre začiatok písania stlačte medzerník.\n")
-    while receiver.getReceiverInput():
-        if keyboard.read_key() == "space":
-            s = input("Prajete si začať komunikáciu ? (y/n):")
-            if s != "y":
-                continue
-            receiver.setActiveClass(False)
+        if inputMode == 1: #poslat subor
+            print("posielanie suboru")
 
-            sender.establish_com()
-            cancel_t2.start()
+            sender.set_enabled_keepAlive(False)  # prestane posielať keepAlive
+            receiver.cancel_waiting()  # prestane očakávať vstup
 
-            break
-
-def thread_waiting_for_input_send():
-    print("\nPre začiatok písania stlačte medzerník.\n")
-    receiver.setReceiverInput(True)
-    while receiver.getReceiverInput():
-        if keyboard.read_key() == "space":
-
-            print("je to tu")
-
-            sender.set_enabled_keepAlive(False) #prestane posielať keepAlive
-            receiver.cancel_waiting() #prestane očakávať vstup
 
 
 
@@ -266,12 +259,14 @@ MY_PORT = int(input("Zadajte port, na ktorom očakávate komunikáciu: "))
 receiver = Receiver(MY_PORT)#rcv.Receiver(MY_PORT)
 sender = Sender()#snd.Sender()
 
-t1 = threading.Thread(target=thread_waiting_for_input_synCom, name="t1")
+inputMode = 0
+
+t1 = threading.Thread(target=thread_waiting_for_input, name="t1")
 t2 = threading.Thread(target=receiver.waiting_for_packet, name="t2")
 cancel_t2 = threading.Thread(target=receiver.cancel_waiting, name="cancel_t2")
 
 
-t3 = threading.Thread(target=thread_waiting_for_input_send)
+
 
 
 t1.start()
