@@ -1,7 +1,4 @@
-import receiver as rcv
-import sender as snd
 import threading
-import keyboard
 import socket
 import time
 
@@ -33,7 +30,7 @@ class Packet:
     def create_MSG(self, SEQ, message):
         body = int.to_bytes(7, 1, "big") #type
         body += int.to_bytes(SEQ, 4, "big") #seq
-        body += bytes(message)
+        body += bytes(message, "utf-8")
         return body
 
 
@@ -69,7 +66,8 @@ class Receiver(Packet):
 
         self.arrived_SEQ = 0
 
-
+    def getTargetSocket(self):
+        return self.TARGET_ADDR
 
     def getReceiverInput(self):
         return self.receiverInput
@@ -110,6 +108,10 @@ class Receiver(Packet):
                 self.receiverInput = False
                 ack_P = self.create_ACK(self.get_type(data))
                 self.send_packet(ack_P, addr)
+
+                #uložím si adresu
+                sender.set_TARGET_ADDR(addr)
+
 
                 print("\n\nKomunikácia nadviazaná!")
                 print("IP adresa odosielateľa: " + addr[0])
@@ -170,6 +172,9 @@ class Sender(Packet):
         self.path = ""
         self.file = ""
 
+    def set_TARGET_ADDR(self, addr):
+        self.TARGET_IP = addr[0]
+        self.TARGET_PORT = addr[1]
 
     def get_SEQ(self, body):
         return int.from_bytes(body[1:5], "big")
