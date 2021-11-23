@@ -108,11 +108,12 @@ class Receiver:
         #self.sock.sendto(body, addr)
 
     def restart_listening(self):
-        pass
+        self.cancel_waiting()
+        self.synchronized = True
+        self.waiting_for_packet()
 
     def cancel_waiting(self):
         self.activeClass = False
-        self.synchronized = True
         packet_creator.sendPacket(int.to_bytes(255, 1, "big"), packet_creator.get_MY_addr())
         #self.sock.sendto(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
 
@@ -220,7 +221,7 @@ class Sender:
         return int.from_bytes(body[1:5], "big")
 
     def send_packet(self, body):
-        packet_creator.sendPacket(body, (self.TARGET_IP, self.TARGET_PORT))
+        packet_creator.sendPacket(body, packet_creator.get_TARGET_addr())
         #self.sock.sendto(body, (self.TARGET_IP, self.TARGET_PORT))
 
     def send_message(self, message):
