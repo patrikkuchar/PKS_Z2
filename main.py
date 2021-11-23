@@ -3,6 +3,20 @@ import socket
 import time
 
 class Packet_creator:
+    def set_MY_addr(self, IP, port):
+        self.MY_IP = IP
+        self.MY_PORT = port
+
+    def set_TARGET_addr(self, IP, port):
+        self.TARGET_IP = IP
+        self.TARGET_PORT = port
+
+    def get_MY_addr(self):
+        return (self.MY_IP, self.MY_PORT)
+
+    def get_TARGET_addr(self):
+        return (self.TARGET_IP, self.TARGET_PORT)
+
     def changeInputMode(self, value):
         global inputMode
         inputMode = value
@@ -79,9 +93,6 @@ class Receiver:
 
         self.synchronized = False
 
-    def getTargetSocket(self):
-        return self.TARGET_ADDR
-
 
     def getReceiverInput(self):
         return self.receiverInput
@@ -96,9 +107,12 @@ class Receiver:
         packet_creator.sendPacket(body, addr)
         #self.sock.sendto(body, addr)
 
+    def restart_listening(self):
+        pass
 
     def cancel_waiting(self):
         self.activeClass = False
+        self.synchronized = True
         packet_creator.sendPacket(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
         #self.sock.sendto(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
 
@@ -131,11 +145,12 @@ class Receiver:
 
                 self.receiverInput = False
                 ack_P = packet_creator.create_ACK(packet_creator.get_type(data))
+
                 self.send_packet(ack_P, addr)
 
                 #uložím si adresu
-                sender.set_TARGET_ADDR(addr)
-                self.MY_PORT2 = addr[1]
+                packet_creator.set_TARGET_addr(addr[0], addr[1])
+                packet_creator.set_MY_addr(self.MY_IP, self.MY_PORT)
 
 
                 print("\n\nKomunikácia nadviazaná!")
@@ -273,6 +288,7 @@ class Sender:
 
         packet_creator.changeInputMode(1) #poslanie suboru
 
+
         threading.Thread(target=self.thread_keepAlive, name="t1").start()
 
 
@@ -289,7 +305,15 @@ class Sender:
         #self.TARGET_IP = input("Zadajte IP adresu prijímateľa: ")
         #self.TARGET_PORT = input("Zadajte port prijímateľa: ")
 
+        self.sock.bind(('', 0))
+        addr = self.sock.getsockname()
+        print("Mojo infošky")
+        print(addr)
+
         packet_creator.send_socket(self.sock)
+        packet_creator.set_TARGET_addr(self.TARGET_IP, self.TARGET_PORT)
+        packet_creator.set_TARGET_addr(addr[0], addr[1])
+
 
         self.send_packet(syn_P)
 
@@ -312,7 +336,7 @@ def thread_waiting_for_input():
                 #receiver.setActiveClass(False)
 
                 sender.establish_com()
-                #cancel_t2.start()
+                receiver.restart_listening()
 
 
         elif inputMode == 1: #poslat subor
