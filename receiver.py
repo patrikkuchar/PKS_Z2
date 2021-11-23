@@ -51,6 +51,8 @@ class Receiver:
         self.activeClass = False
         self.sock.sendto(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
 
+    def waiting_for_keepAlive(self):
+        pass
 
     def waiting_for_packet(self):
         while self.activeClass:
@@ -68,6 +70,11 @@ class Receiver:
                 print("Port odosielateľa: " + str(addr[1]))
 
                 break
+
+            if type == 5: #KeepAlive
+                print("KeepAlive packet prijatý")
+                ack_P = self.create_ACK(self.get_type(data))
+                self.send_packet(ack_P, addr)
 
 
 
