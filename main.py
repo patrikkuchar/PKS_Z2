@@ -5,8 +5,46 @@ import keyboard
 import socket
 import time
 
+class Packet:
+    def changeInputMode(self, value):
+        global inputMode
+        inputMode = value
 
-class Receiver:
+    def create_ACK(self, SEQ):
+        body = int.to_bytes(4, 1, "big")
+        body += int.to_bytes(SEQ, 4, "big")
+        return body
+
+    def create_SYN(self):
+        body = int.to_bytes(0, 1, "big") #type
+        body += int.to_bytes(0, 4, "big") #seq
+        return body
+
+    def create_KeepAlive(self, SEQ):
+        body = int.to_bytes(5, 1, "big") #type
+        body += int.to_bytes(SEQ, 4, "big") #seq
+        return body
+
+    def create_FIN(self, SEQ):
+        body = int.to_bytes(6, 1, "big") #type
+        body += int.to_bytes(SEQ, 4, "big") #seq
+        return body
+
+    def create_MSG(self, SEQ, message):
+        body = int.to_bytes(7, 1, "big") #type
+        body += int.to_bytes(SEQ, 4, "big") #seq
+        body += bytes(message)
+        return body
+
+
+    def get_type(self, body):
+        return body[0]
+
+    def get_SEQ(self, body):
+        return int.from_bytes(body[1:5], "big")
+
+
+class Receiver(Packet):
     def __init__(self, port):
         self.message = ""
         self.path = ""
@@ -31,6 +69,8 @@ class Receiver:
 
         self.arrived_SEQ = 0
 
+
+
     def getReceiverInput(self):
         return self.receiverInput
 
@@ -40,21 +80,9 @@ class Receiver:
     def setActiveClass(self, value):
         self.activeClass = value
 
-    def create_ACK(self, SEQ):
-        body = int.to_bytes(4, 1, "big")
-
-        body += int.to_bytes(SEQ, 4, "big")
-        return body
-
-
     def send_packet(self, body, addr):
         self.sock.sendto(body, addr)
 
-    def get_type(self, body):
-        return body[0]
-
-    def get_SEQ(self, body):
-        return int.from_bytes(body[1:5], "big")
 
     def cancel_waiting(self):
         self.activeClass = False
@@ -72,7 +100,6 @@ class Receiver:
 
 
     def waiting_for_packet(self):
-        global inputMode
         self.activeClass = True
         while self.activeClass:
             data, addr = self.sock.recvfrom(1500)  # buffer size is 1024 bytes
@@ -90,7 +117,7 @@ class Receiver:
 
                 print("Ako si prajete pokračovať:\na) Poslať správu\nb) Poslať súbor\nc) Ukončiť komunikáciu\n")
 
-                inputMode = 1 #poslanie suboru
+                super().changeInputMode(1) #poslanie suboru
 
                 self.keepAlive_arrived = False
                 threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(0, )).start()
@@ -110,6 +137,10 @@ class Receiver:
 
                 threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(SEQ, )).start()
 
+            if type == 7: #sprava
+                print("Sprava dorazila")
+                print(data[5:])
+
 
 
 
@@ -128,7 +159,7 @@ class Receiver:
 
 
 
-class Sender:
+class Sender(Packet):
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET,  # Internet
                              socket.SOCK_DGRAM)  # UDP
@@ -139,27 +170,28 @@ class Sender:
         self.path = ""
         self.file = ""
 
-    def create_SYN(self):
-        body = int.to_bytes(0, 1, "big") #type
-        body += int.to_bytes(0, 4, "big") #seq
-        return body
-
-    def create_KeepAlive(self, SEQ):
-        body = int.to_bytes(5, 1, "big") #type
-        body += int.to_bytes(SEQ, 4, "big") #seq
-        return body
-
-    def create_FIN(self, SEQ):
-        body = int.to_bytes(6, 1, "big") #type
-        body += int.to_bytes(SEQ, 4, "big") #seq
-        return body
-
 
     def get_SEQ(self, body):
         return int.from_bytes(body[1:5], "big")
 
     def send_packet(self, body):
         self.sock.sendto(body, (self.TARGET_IP, self.TARGET_PORT))
+
+    def send_message(self, message):
+        self.message = message
+
+        self.SEQ_num += 1
+        msg_P = self.create_MSG(self.SEQ_num, message)
+
+        self.send_packet(msg_P)
+
+        print("Správa úspešne odoslaná.")
+
+        super().changeInputMode(1)
+
+
+
+
 
 
     def set_enabled_keepAlive(self, value):
@@ -199,7 +231,6 @@ class Sender:
 
 
     def waiting_for_SYN_packet(self):
-        global inputMode
         data, addr = self.sock.recvfrom(1500)
         print("\n\nKomunikácia nadviazaná!")
         print("IP adresa prijímateľa: " + addr[0])
@@ -207,7 +238,7 @@ class Sender:
 
         print("Ako si prajete pokračovať:\na) Poslať správu\nb) Poslať súbor\nc) Ukončiť komunikáciu\n")
 
-        inputMode = 1 #poslanie suboru
+        self.changeInputMode(1) #poslanie suboru
 
         threading.Thread(target=self.thread_keepAlive, name="t1").start()
 
@@ -266,6 +297,10 @@ def thread_waiting_for_input():
 
             #sender.set_enabled_keepAlive(False)  # prestane posielať keepAlive
             #receiver.cancel_waiting()  # prestane očakávať vstup
+
+        elif inputMode == 2: #sprava
+            sender.send_message(s)
+
 
 
 
