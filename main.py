@@ -313,10 +313,10 @@ class Sender:
 
         packet_creator.send_socket(self.sock)
         packet_creator.set_TARGET_addr(self.TARGET_IP, self.TARGET_PORT)
-        packet_creator.set_TARGET_addr(addr[0], addr[1])
+        packet_creator.set_MY_addr(addr[0], addr[1])
 
-
-        self.send_packet(syn_P)
+        self.sock.sendto(syn_P, (self.TARGET_IP, self.TARGET_PORT))
+        #self.send_packet(syn_P)
 
         self.waiting_for_SYN_packet()
 
