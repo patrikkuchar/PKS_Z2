@@ -47,9 +47,12 @@ class Receiver:
     def get_SEQ(self, body):
         return int.from_bytes(body[1:5], "big")
 
+    def cancel_waiting(self):
+        self.activeClass = False
+        self.sock.sendto(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
 
     def waiting_for_packet(self):
-        while True:
+        while self.activeClass:
             data, addr = self.sock.recvfrom(1500)  # buffer size is 1024 bytes
 
             type = self.get_type(data)
@@ -62,6 +65,7 @@ class Receiver:
                 print("Komunikácia nadviazaná!")
                 print("IP adresa odosielateľa: " + addr[0])
                 print("Port odosielateľa: " + str(addr[1]))
+
 
 
 
