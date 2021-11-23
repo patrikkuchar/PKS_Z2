@@ -113,11 +113,11 @@ class Receiver:
     def cancel_waiting(self):
         self.activeClass = False
         self.synchronized = True
-        packet_creator.sendPacket(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
+        packet_creator.sendPacket(int.to_bytes(255, 1, "big"), packet_creator.get_MY_addr())
         #self.sock.sendto(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
 
     def cancel_keepAlive_waiting(self):
-        packet_creator.sendPacket(int.to_bytes(254, 1, "big"), (self.MY_IP, self.MY_PORT))
+        packet_creator.sendPacket(int.to_bytes(254, 1, "big"), packet_creator.get_MY_addr())
         #self.sock.sendto(int.to_bytes(254, 1, "big"), (self.MY_IP, self.MY_PORT))
 
     def exceeded_waiting_for_keepAlive(self, ex_SEQ):
