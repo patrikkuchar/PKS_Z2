@@ -283,7 +283,7 @@ def thread_waiting_for_input():
                 receiver.setActiveClass(False)
 
                 sender.establish_com()
-                cancel_t2.start()
+                #cancel_t2.start()
 
 
         elif inputMode == 1: #poslat subor
