@@ -21,6 +21,9 @@ class Packet_creator:
         global inputMode
         inputMode = value
 
+    def generateCRC(self, fragment):
+        return fragment
+
     def create_ACK(self, SEQ):
         body = int.to_bytes(4, 1, "big")
         body += int.to_bytes(SEQ, 4, "big")
@@ -30,6 +33,24 @@ class Packet_creator:
         body = int.to_bytes(0, 1, "big") #type
         body += int.to_bytes(0, 4, "big") #seq
         return body
+
+    def create_INF(self, SEQ, data):
+        body = int.to_bytes(1, 1, "big") #type
+        body += int.to_bytes(SEQ, 4, "big") #seq
+        body += bytes(data, "utf-8")
+        return self.generateCRC(body)
+
+    def create_PSH(self, SEQ, data):
+        body = int.to_bytes(2, 1, "big") #type
+        body += int.to_bytes(SEQ, 4, "big") #seq
+        body += data
+        return self.generateCRC(body)
+
+    def create_PSH_F(self, SEQ, data):
+        body = int.to_bytes(3, 1, "big") #type
+        body += int.to_bytes(SEQ, 4, "big") #seq
+        body += data
+        return self.generateCRC(body)
 
     def create_KeepAlive(self, SEQ):
         body = int.to_bytes(5, 1, "big") #type
@@ -172,6 +193,9 @@ class Receiver:
                 self.keepAlive_arrived = False
                 threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(0, )).start()
 
+            if type == 1: #INF
+                pass
+
 
             if type == 5: #KeepAlive
                 if showKeepAlivePackets:
@@ -219,11 +243,20 @@ class Sender:
         self.SEQ_num = 0
 
 
-        self.message = ""
-        self.path = ""
+        self.local_path = ""
+        self.target_path = ""
         self.file = ""
 
         self.arrived_SEQ = 1
+
+        self.packetsToSend = []
+
+
+    def set_local_path(self, path):
+        self.local_path = path
+
+    def set_target_path(self, path):
+        self.target_path = path
 
     def set_TARGET_ADDR(self, addr):
         self.TARGET_IP = addr[0]
@@ -236,9 +269,12 @@ class Sender:
         packet_creator.sendPacket(body, packet_creator.get_TARGET_addr())
         #self.sock.sendto(body, (self.TARGET_IP, self.TARGET_PORT))
 
-    def send_message(self, message):
-        self.message = message
+    def send_prepared_packets(self):
+        for protocol in self.packetsToSend:
+            self.send_packet(protocol)
+        print("Súbor odoslaný!")
 
+    def send_message(self, message):
         self.SEQ_num += 1
         msg_P = packet_creator.create_MSG(self.SEQ_num, message)
 
@@ -248,7 +284,33 @@ class Sender:
 
         packet_creator.changeInputMode(1)
 
+    def add_filename(self):
+        filename = ""
+        for c in self.local_path[::-1]:
+            if c == '\\':
+                break
+            filename += c
 
+        if self.target_path[-1] == '\\':
+            return self.target_path + filename[::-1]
+        return self.target_path + "\\" + filename[::-1]
+
+    def send_file(self):
+        ## prečítanie súboru
+        file = open(self.local_path, "r+b")
+        read = file.read()
+        file.close()
+
+        ## príprava cesty
+        ## -------- pripraviť funkciu ++SEQ
+        self.SEQ_num += 1
+        self.packetsToSend.append(packet_creator.create_INF(self.SEQ_num ,self.add_filename()))
+
+        ## príprava súboru
+        self.SEQ_num += 1
+        self.packetsToSend.append(packet_creator.create_PSH(self.SEQ_num, read))
+
+        self.send_prepared_packets()
 
 
 
@@ -357,14 +419,13 @@ def thread_waiting_for_input():
 
 
         elif inputMode == 1: #poslat subor
-            print("posielanie suboru")
 
             if s == "a": #sprava
                 print("Zadajte správu: ", end="")
                 inputMode = 2
 
             if s == "b": #subor
-                print("Zadajte cestu k súboru: ", end="")
+                print("Zadajte absolútnu cestu k súboru: ", end="")
                 inputMode = 3
 
             if s == "c": #konec
@@ -375,6 +436,18 @@ def thread_waiting_for_input():
 
         elif inputMode == 2: #sprava
             sender.send_message(s)
+
+        elif inputMode == 3: #subor
+            sender.set_local_path(s)
+
+            print("Zadajte absolútnu cestu k priečinku, v ktorom sa má uložiť odoslaný súbor: ", end="")
+            inputMode = 4
+
+        elif inputMode == 4: #cesta suboru
+            sender.set_target_path(s)
+            inputMode = 1
+            sender.send_file()
+
 
 
 
