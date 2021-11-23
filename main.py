@@ -174,7 +174,8 @@ class Receiver:
 
 
             if type == 5: #KeepAlive
-                print("KeepAlive packet prijatý")
+                if showKeepAlivePackets:
+                    print("KeepAlive packet prijatý")
 
                 SEQ = packet_creator.get_SEQ(data)
 
@@ -257,7 +258,7 @@ class Sender:
 
     def exceeded_waiting_for_keepAlive(self, ex_SEQ):
         while True:
-            time.sleep(5.4)
+            time.sleep(6)
 
             if ex_SEQ >= self.arrived_SEQ:
                 self.keepAlive_arrived = False
@@ -282,7 +283,8 @@ class Sender:
             #threading.Thread(target=self.waiting_for_keepAlive_packet).start()
             time.sleep(5)
             self.SEQ_num += 1
-            print("KeepAlive packet poslaný")
+            if showKeepAlivePackets:
+                print("KeepAlive packet poslaný")
             self.send_packet(packet_creator.create_KeepAlive(self.SEQ_num))
 
             if not self.keepAlive_arrived:
@@ -351,7 +353,7 @@ def thread_waiting_for_input():
                 #receiver.setActiveClass(False)
 
                 sender.establish_com()
-                receiver.restart_listening()
+                threading.Thread(target=receiver.restart_listening).start()
 
 
         elif inputMode == 1: #poslat subor
@@ -381,7 +383,7 @@ def thread_waiting_for_input():
 
 
 
-
+showKeepAlivePackets = False
 
 MY_PORT = int(input("Zadajte port, na ktorom očakávate komunikáciu: "))
 
