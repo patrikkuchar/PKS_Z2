@@ -114,11 +114,13 @@ class Receiver:
 
     def cancel_waiting(self):
         self.activeClass = False
-        packet_creator.sendPacket(int.to_bytes(255, 1, "big"), packet_creator.get_MY_addr())
+        #packet_creator.sendPacket(int.to_bytes(255, 1, "big"), packet_creator.get_MY_addr())
+        packet_creator.sendPacket(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
         #self.sock.sendto(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
 
     def cancel_keepAlive_waiting(self):
-        packet_creator.sendPacket(int.to_bytes(254, 1, "big"), packet_creator.get_MY_addr())
+        #packet_creator.sendPacket(int.to_bytes(254, 1, "big"), packet_creator.get_MY_addr())
+        packet_creator.sendPacket(int.to_bytes(254, 1, "big"), (self.MY_IP, self.MY_PORT))
         #self.sock.sendto(int.to_bytes(254, 1, "big"), (self.MY_IP, self.MY_PORT))
 
     def exceeded_waiting_for_keepAlive(self, ex_SEQ):
@@ -208,6 +210,7 @@ class Sender:
                              socket.SOCK_DGRAM)  # UDP
 
         self.SEQ_num = 0
+
 
         self.message = ""
         self.path = ""
@@ -306,14 +309,14 @@ class Sender:
         #self.TARGET_IP = input("Zadajte IP adresu prijímateľa: ")
         #self.TARGET_PORT = input("Zadajte port prijímateľa: ")
 
-        self.sock.bind(('', 0))
-        addr = self.sock.getsockname()
-        print("Mojo infošky")
-        print(addr)
+        #self.sock.bind(('', 0))
+        #addr = self.sock.getsockname()
+        #print("Mojo infošky")
+        #print(addr)
 
         packet_creator.send_socket(self.sock)
         packet_creator.set_TARGET_addr(self.TARGET_IP, self.TARGET_PORT)
-        packet_creator.set_MY_addr(addr[0], addr[1])
+        #packet_creator.set_MY_addr(addr[0], addr[1])
 
         self.sock.sendto(syn_P, (self.TARGET_IP, self.TARGET_PORT))
         #self.send_packet(syn_P)
