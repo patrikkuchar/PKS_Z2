@@ -159,7 +159,7 @@ class Receiver:
 
     def exceeded_waiting_for_keepAlive(self, ex_SEQ):
 
-        time.sleep(5.4)
+        time.sleep(5.1)
 
         if ex_SEQ >= self.arrived_SEQ:
             self.cancel_keepAlive_waiting()
@@ -205,7 +205,8 @@ class Receiver:
                 self.path = self.decodeData(data)
 
             if type == 2: #PSH
-                self.file = self.decodeData(data)
+                self.file = data[5:]
+                self.saveData()
 
 
 
@@ -299,13 +300,13 @@ class Sender:
     def add_filename(self):
         filename = ""
         for c in self.local_path[::-1]:
-            if c == '\\':
+            if c == '/':
                 break
             filename += c
 
-        if self.target_path[-1] == '\\':
+        if self.target_path[-1] == '/':
             return self.target_path + filename[::-1]
-        return self.target_path + "\\" + filename[::-1]
+        return self.target_path + "/" + filename[::-1]
 
     def send_file(self):
         ## prečítanie súboru
@@ -332,7 +333,7 @@ class Sender:
 
     def exceeded_waiting_for_keepAlive(self, ex_SEQ):
         while True:
-            time.sleep(6)
+            time.sleep(5.1)
 
             if ex_SEQ >= self.arrived_SEQ:
                 self.keepAlive_arrived = False
