@@ -119,6 +119,8 @@ class Receiver:
 
         self.synchronized = False
 
+    def decodeData(self, body):
+        return body[5:].decode("utf-8")
 
     def getReceiverInput(self):
         return self.receiverInput
@@ -128,6 +130,12 @@ class Receiver:
 
     def setActiveClass(self, value):
         self.activeClass = value
+
+    def saveData(self):
+        f = open(self.path, "w+b")
+        f.write(self.file)
+        f.close()
+        print("Súbor bol uspešne uložený na adrese\n" + self.path + "\n")
 
     def send_packet(self, body, addr):
         packet_creator.sendPacket(body, addr)
@@ -194,7 +202,11 @@ class Receiver:
                 threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(0, )).start()
 
             if type == 1: #INF
-                pass
+                self.path = self.decodeData(data)
+
+            if type == 2: #PSH
+                self.file = self.decodeData(data)
+
 
 
             if type == 5: #KeepAlive
