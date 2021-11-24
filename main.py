@@ -225,6 +225,9 @@ class Receiver:
 
                 threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(SEQ, )).start()
 
+            if type == 6: #FIN
+                print("Komunikácia úspešne ukončená")
+
             if type == 7: #sprava
                 print("Sprava dorazila")
                 print(data[5:])
@@ -297,6 +300,10 @@ class Sender:
 
         packet_creator.changeInputMode(1)
 
+    def ppSEQ(self):
+        self.SEQ_num += 1
+        return self.SEQ_num
+
     def add_filename(self):
         filename = ""
         for c in self.local_path[::-1]:
@@ -315,18 +322,16 @@ class Sender:
         file.close()
 
         ## príprava cesty
-        ## -------- pripraviť funkciu ++SEQ
-        self.SEQ_num += 1
-        self.packetsToSend.append(packet_creator.create_INF(self.SEQ_num ,self.add_filename()))
+        self.packetsToSend.append(packet_creator.create_INF(self.ppSEQ() ,self.add_filename()))
 
         ## príprava súboru
-        self.SEQ_num += 1
-        self.packetsToSend.append(packet_creator.create_PSH(self.SEQ_num, read))
+        self.packetsToSend.append(packet_creator.create_PSH(self.ppSEQ(), read))
 
         self.send_prepared_packets()
 
-
-
+    def end_com(self):
+        fin_p = packet_creator.create_FIN(self.ppSEQ())
+        packet_creator.sendPacket(fin_p, packet_creator.get_TARGET_addr())
 
     def set_enabled_keepAlive(self, value):
         self.enabled_keepAlive = value
@@ -443,6 +448,7 @@ def thread_waiting_for_input():
 
             if s == "c": #konec
                 print("Koneeeeec")
+                sender.end_com()
 
             #sender.set_enabled_keepAlive(False)  # prestane posielať keepAlive
             #receiver.cancel_waiting()  # prestane očakávať vstup
