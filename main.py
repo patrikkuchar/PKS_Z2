@@ -233,7 +233,7 @@ class Receiver:
                 print(data[5:])
 
             if type == 8: #keepAlive ACK
-                sender.set_arrived_SEQ(data)
+                sender.pp_arrived_SEQ()
 
 
             if type == 254: #KeepAlive not arrived
@@ -346,8 +346,8 @@ class Sender:
 
             ex_SEQ += 1
 
-    def set_arrived_SEQ(self, data):
-        self.arrived_SEQ = packet_creator.get_SEQ(data)
+    def pp_arrived_SEQ(self):
+        self.arrived_SEQ += 1
 
     #def waiting_for_keepAlive_packet(self):
         #data, addr = packet_creator.waitForPacket()
