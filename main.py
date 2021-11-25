@@ -375,6 +375,8 @@ class Sender:
         return array_of_data
 
     def send_message(self, message):
+        self.stop_keepAlive()
+
         size = self.ask_for_size()
 
         array_of_data = self.split_data(message, size)
@@ -416,10 +418,9 @@ class Sender:
         return self.target_path + "/" + filename[::-1]
 
     def send_file(self):
+        self.stop_keepAlive()
+
         size = self.ask_for_size()
-
-
-
 
         ## prečítanie súboru
         file = open(self.local_path, "r+b")
@@ -622,7 +623,7 @@ def thread_waiting_for_input():
 
 
 
-showKeepAlivePackets = True
+showKeepAlivePackets = False
 
 MY_PORT = int(input("Zadajte port, na ktorom očakávate komunikáciu: "))
 
