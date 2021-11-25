@@ -96,14 +96,15 @@ class Receiver:
         self.path = ""
         self.file = ""
 
-        # hostname = socket.gethostname()
-        # local_ip = socket.gethostbyname(hostname)
+        hostname = socket.gethostname()
+        self.MY_IP = socket.gethostbyname(hostname)
         # print(local_ip)
 
-        # UDP_IP = local_ip
         #self.MY_IP = "127.0.0.1"
-        self.MY_IP = "192.168.0.166"
+        #self.MY_IP = "192.168.0.166"
         self.MY_PORT = port
+
+
 
 
 
@@ -118,6 +119,10 @@ class Receiver:
         self.arrived_SEQ = 0
 
         self.synchronized = False
+
+    def writeInfo(self):
+        print("\n\n\nIP adresa zariadenia: " + self.MY_IP)
+        print("Port, na ktorom sa očakáva komunikácia: " + str(self.MY_PORT) + "\n\n")
 
     def decodeData(self, body):
         return body[5:].decode("utf-8")
@@ -395,12 +400,12 @@ class Sender:
         syn_P = packet_creator.create_SYN()
 
         #self.TARGET_IP = "127.0.0.1"
-        self.TARGET_IP = "192.168.0.130"
+        #self.TARGET_IP = "192.168.0.183"
         # UDP_IP = "192.168.0.130"
-        self.TARGET_PORT = 5005
+        #self.TARGET_PORT = 5005
 
-        #self.TARGET_IP = input("Zadajte IP adresu prijímateľa: ")
-        #self.TARGET_PORT = input("Zadajte port prijímateľa: ")
+        self.TARGET_IP = input("Zadajte IP adresu prijímateľa: ")
+        self.TARGET_PORT = input("Zadajte port prijímateľa: ")
 
         #self.sock.bind(('', 0))
         #addr = self.sock.getsockname()
