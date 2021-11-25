@@ -104,6 +104,8 @@ class Receiver:
         #self.MY_IP = "192.168.0.166"
         self.MY_PORT = port
 
+        self.writeInfo()
+
 
 
 
@@ -405,7 +407,7 @@ class Sender:
         #self.TARGET_PORT = 5005
 
         self.TARGET_IP = input("Zadajte IP adresu prijímateľa: ")
-        self.TARGET_PORT = input("Zadajte port prijímateľa: ")
+        self.TARGET_PORT = int(input("Zadajte port prijímateľa: "))
 
         #self.sock.bind(('', 0))
         #addr = self.sock.getsockname()
