@@ -80,8 +80,13 @@ class Packet_creator:
         body += int.to_bytes(SEQ, 4, "big") #seq
         return body
 
-    def create_FIN(self, SEQ):
+    def create_KeepAliveEND(self, SEQ):
         body = int.to_bytes(10, 1, "big") #type
+        body += int.to_bytes(SEQ, 4, "big") #seq
+        return body
+
+    def create_FIN(self, SEQ):
+        body = int.to_bytes(11, 1, "big") #type
         body += int.to_bytes(SEQ, 4, "big") #seq
         return body
 
@@ -121,7 +126,7 @@ class Receiver:
 
 
 
-
+        self.enabled_keepAlive = False
 
         self.sock = socket.socket(socket.AF_INET,  # Internet
                              socket.SOCK_DGRAM)  # UDP
@@ -241,6 +246,8 @@ class Receiver:
 
 
             elif type == 8: #KeepAlive
+                self.enabled_keepAlive = True
+
                 if showKeepAlivePackets:
                     print("KeepAlive packet prijatý")
 
@@ -258,7 +265,10 @@ class Receiver:
             elif type == 9: #keepAlive ACK
                 sender.pp_arrived_SEQ()
 
-            elif type == 10: #FIN
+            elif type == 10: #keepAlive stop
+                self.enabled_keepAlive = False
+
+            elif type == 11: #FIN
                 print("Komunikácia úspešne ukončená")
 
 
@@ -369,14 +379,19 @@ class Sender:
         fin_p = packet_creator.create_FIN(self.ppSEQ())
         packet_creator.sendPacket(fin_p, packet_creator.get_TARGET_addr())
 
+    def stop_keepAlive(self):
+        keepAliveStop_p = packet_creator.create_KeepAliveEND(self.ppSEQ())
+        self.keepAlive_arrived = False
+        self.send_packet(keepAliveStop_p)
+
     def set_enabled_keepAlive(self, value):
         self.enabled_keepAlive = value
 
     def exceeded_waiting_for_keepAlive(self, ex_SEQ):
-        while True:
+        while self.enabled_keepAlive:
             time.sleep(5.1)
 
-            if ex_SEQ >= self.arrived_SEQ:
+            if ex_SEQ >= self.arrived_SEQ and self.enabled_keepAlive:
                 self.keepAlive_arrived = False
                 break
 
@@ -402,7 +417,7 @@ class Sender:
                 print("KeepAlive packet poslaný")
             self.send_packet(packet_creator.create_KeepAlive(self.ppSEQ()))
 
-            if not self.keepAlive_arrived:
+            if not self.keepAlive_arrived and self.enabled_keepAlive:
                 print("\nKomunikácia prerušená!\n")
                 break
 
@@ -498,6 +513,9 @@ def thread_waiting_for_input():
             if s == "c": #konec
                 print("Koneeeeec")
                 sender.end_com()
+
+            if s == "k": #stop KeepAlive
+                print("KeepAlive stopnute")
 
             #sender.set_enabled_keepAlive(False)  # prestane posielať keepAlive
             #receiver.cancel_waiting()  # prestane očakávať vstup
