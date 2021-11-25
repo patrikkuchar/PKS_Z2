@@ -232,14 +232,18 @@ class Receiver:
 
             if type == 1: #INF
                 #self.path = self.decodeData(data)
-                pass
+                print("Paket cesty dorazil")
+                self.path += self.getDataFromPacket(data, True)
+
 
             elif type == 2: #PSH
-                self.file = data[5:]
-                self.saveData()
+                print("Paket dorazil")
+                self.file += self.getDataFromPacket(data, False)
 
             elif type == 3: #PSH_F
-                pass
+                print("Posledný paket dorazil")
+                self.file += self.getDataFromPacket(data, False)
+                self.saveData()
 
             elif type == 4: #sprava
                 print("Paket dorazil")
@@ -347,7 +351,7 @@ class Sender:
     def send_prepared_packets(self):
         for protocol in self.packetsToSend:
             self.send_packet(protocol)
-        print("Súbor odoslaný!")
+        self.packetsToSend = []
 
     def ask_for_size(self):
         while True:
@@ -379,9 +383,7 @@ class Sender:
 
         print("Odošle sa " + str(len(array_of_data)) + " paketov.")
 
-
-        for packet in self.packetsToSend:
-            self.send_packet(packet)
+        self.send_prepared_packets()
 
 
 
@@ -391,7 +393,6 @@ class Sender:
 
         print("Správa úspešne odoslaná.")
 
-        self.packetsToSend = []
 
         packet_creator.changeInputMode(1)
 
@@ -413,20 +414,38 @@ class Sender:
     def send_file(self):
         size = self.ask_for_size()
 
+
+
+
         ## prečítanie súboru
         file = open(self.local_path, "r+b")
         read = file.read()
         file.close()
 
+
         ## príprava cesty
-        self.packetsToSend.append(packet_creator.create_INF(self.ppSEQ() ,self.add_filename()))
+        array_of_data = self.split_data(self.add_filename(), size)
+        for one_data in array_of_data:
+            self.packetsToSend.append(packet_creator.create_INF(self.ppSEQ(), one_data))
+            # výpočet CRC
+
 
         ## príprava súboru
-        self.packetsToSend.append(packet_creator.create_PSH(self.ppSEQ(), read))
+        array_of_data = self.split_data(read, size)
+        for one_data in array_of_data[:-1]:
+            self.packetsToSend.append(packet_creator.create_PSH(self.ppSEQ(), one_data))
+            # výpočet CRC
+        self.packetsToSend.append(packet_creator.create_PSH_F(self.ppSEQ(), array_of_data[-1]))
+        # výpočet CRC
 
+        print("Odošle sa " + str(len(self.packetsToSend)) + " paketov.")
         self.send_prepared_packets()
+        print("Súbor úspešne odoslaný.")
+
+        packet_creator.changeInputMode(1)
 
     def end_com(self):
+        self.stop_keepAlive()
         fin_p = packet_creator.create_FIN(self.ppSEQ())
         packet_creator.sendPacket(fin_p, packet_creator.get_TARGET_addr())
 
