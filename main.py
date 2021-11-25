@@ -238,10 +238,9 @@ class Receiver:
             elif type == 5: #sprava_F
                 pass
 
-            if type == 7: #keepAlive ACK
-                sender.pp_arrived_SEQ()
 
-            if type == 8: #KeepAlive
+
+            elif type == 8: #KeepAlive
                 if showKeepAlivePackets:
                     print("KeepAlive packet prijatý")
 
@@ -256,14 +255,17 @@ class Receiver:
 
                 threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(SEQ, )).start()
 
-            if type == 10: #FIN
+            elif type == 9: #keepAlive ACK
+                sender.pp_arrived_SEQ()
+
+            elif type == 10: #FIN
                 print("Komunikácia úspešne ukončená")
 
 
 
 
 
-            if type == 254: #KeepAlive not arrived
+            elif type == 254: #KeepAlive not arrived
                 #print("KeepAlive packet nedorazil")
                 print("\nKomunikácia prerušená!\n")
                 break
@@ -389,10 +391,9 @@ class Sender:
         while self.enabled_keepAlive:
             #threading.Thread(target=self.waiting_for_keepAlive_packet).start()
             time.sleep(5)
-            self.SEQ_num += 1
             if showKeepAlivePackets:
                 print("KeepAlive packet poslaný")
-            self.send_packet(packet_creator.create_KeepAlive(self.SEQ_num))
+            self.send_packet(packet_creator.create_KeepAlive(self.ppSEQ()))
 
             if not self.keepAlive_arrived:
                 print("\nKomunikácia prerušená!\n")
@@ -406,11 +407,11 @@ class Sender:
             MY_IP = socket.gethostbyname(hostname)
             nACK_p = packet_creator.create_nACK(0)
 
-            #self.sock.bind(('', 0))
-            #addr = self.sock.getsockname()
-            #print("MYIP: " + addr[0])
-            #print("MYPORT: " + str(addr[1]))
-            #self.sock.sendto(nACK_p, addr)
+            self.sock.bind(('', 0))
+            addr = self.sock.getsockname()
+            print("MYIP: " + addr[0])
+            print("MYPORT: " + str(addr[1]))
+            self.sock.sendto(nACK_p, addr)
 
 
     def waiting_for_SYN_packet(self):
