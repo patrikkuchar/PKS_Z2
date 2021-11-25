@@ -402,13 +402,19 @@ class Sender:
     def exceeded_waiting_for_SYN_packet(self):
         if inputMode != 1: #prijaty paket
             hostname = socket.gethostname()
+            print(hostname)
             MY_IP = socket.gethostbyname(hostname)
             nACK_p = packet_creator.create_nACK(0)
-            packet_creator.sendPacket(nACK_p, (MY_IP, MY_PORT))
+
+            #self.sock.bind(('', 0))
+            #addr = self.sock.getsockname()
+            #print("MYIP: " + addr[0])
+            #print("MYPORT: " + str(addr[1]))
+            #self.sock.sendto(nACK_p, addr)
 
 
     def waiting_for_SYN_packet(self):
-        threading.Timer(0.5, self.exceeded_waiting_for_SYN_packet)
+        threading.Timer(0.5, self.exceeded_waiting_for_SYN_packet).start()
 
         data, addr = packet_creator.waitForPacket()
 
@@ -425,7 +431,7 @@ class Sender:
             packet_creator.changeInputMode(1) #poslanie suboru
 
             threading.Thread(target=self.thread_keepAlive, name="t1").start()
-        if type == 7: #nACK
+        elif type == 7: #nACK
             print("\n\nKomunikáciu sa nepodarilo nadviazať!\n\nPrajete si znova začať komunikáciu (y/n)")
         else:
             print("Neznam co še pohubilo")
@@ -517,7 +523,7 @@ def thread_waiting_for_input():
 
 
 
-showKeepAlivePackets = False
+showKeepAlivePackets = True
 
 MY_PORT = int(input("Zadajte port, na ktorom očakávate komunikáciu: "))
 
