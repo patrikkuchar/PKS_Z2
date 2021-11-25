@@ -144,11 +144,15 @@ class Receiver:
         print("\n\n\nIP adresa zariadenia: " + self.MY_IP)
         print("Port, na ktorom sa očakáva komunikácia: " + str(self.MY_PORT) + "\n\n")
 
-    def decodeData(self, body):
-        return body[5:].decode("utf-8")
+    def getDataFromPacket(self, body, decode):
+        if decode:
+            return body[5:].decode("utf-8")
+        return body[5:]
+
 
     def getReceiverInput(self):
         return self.receiverInput
+
 
     def setReceiverInput(self, value):
         self.receiverInput = value
@@ -227,7 +231,8 @@ class Receiver:
                 threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(0, )).start()
 
             if type == 1: #INF
-                self.path = self.decodeData(data)
+                #self.path = self.decodeData(data)
+                pass
 
             elif type == 2: #PSH
                 self.file = data[5:]
@@ -237,11 +242,17 @@ class Receiver:
                 pass
 
             elif type == 4: #sprava
-                print("Sprava dorazila")
-                print(data[5:])
+                print("Paket dorazil")
+                #crc kontrola
+                self.message += self.getDataFromPacket(data, True)
 
             elif type == 5: #sprava_F
-                pass
+                print("Posledny paket dorazil")
+                #crc kontrola
+                self.message += self.getDataFromPacket(data, True)
+
+                print(">> " + self.message)
+                self.message = ""
 
 
 
@@ -303,6 +314,7 @@ class Sender:
         self.target_path = ""
         self.file = ""
 
+
         self.sock.bind(('', 0))
         addr = self.sock.getsockname()
         MY_PORT = addr[1]
@@ -337,13 +349,49 @@ class Sender:
             self.send_packet(protocol)
         print("Súbor odoslaný!")
 
-    def send_message(self, message):
-        self.SEQ_num += 1
-        msg_P = packet_creator.create_MSG(self.SEQ_num, message)
+    def ask_for_size(self):
+        while True:
+            size = int(input("Zadajte počet bajtov pre dáta jedného fragmentu (1-1465)"))
+            if size >= 1 and size <= 1465:
+                break
+        return size
 
-        self.send_packet(msg_P)
+    def split_data(self, data, size):
+        array_of_data = []
+        j = 0
+        l = len(data)
+        for i in range(size, l+size, size):
+            array_of_data.append(data[j:i])
+            j = i
+
+        return array_of_data
+
+    def send_message(self, message):
+        size = self.ask_for_size()
+
+        array_of_data = self.split_data(message, size)
+
+        for one_data in array_of_data[:-1]:
+            self.packetsToSend.append(packet_creator.create_MSG(self.ppSEQ(), one_data))
+            #výpočet CRC
+        self.packetsToSend.append(packet_creator.create_MSG_F(self.ppSEQ(), array_of_data[-1]))
+        #výpočet CRC
+
+        print("Odošle sa " + str(len(array_of_data)) + " paketov.")
+
+
+        for packet in self.packetsToSend:
+            self.send_packet(packet)
+
+
+
+        #msg_P = packet_creator.create_MSG(self.ppSEQ(), message)
+
+        #self.send_packet(msg_P)
 
         print("Správa úspešne odoslaná.")
+
+        self.packetsToSend = []
 
         packet_creator.changeInputMode(1)
 
@@ -363,6 +411,8 @@ class Sender:
         return self.target_path + "/" + filename[::-1]
 
     def send_file(self):
+        size = self.ask_for_size()
+
         ## prečítanie súboru
         file = open(self.local_path, "r+b")
         read = file.read()
@@ -384,6 +434,10 @@ class Sender:
         keepAliveStop_p = packet_creator.create_KeepAliveEND(self.ppSEQ())
         self.enabled_keepAlive = False
         self.send_packet(keepAliveStop_p)
+
+    def start_keepAlive(self):
+        self.enabled_keepAlive = True
+        threading.Thread(target=self.thread_keepAlive, name="t1").start()
 
     def set_enabled_keepAlive(self, value):
         self.enabled_keepAlive = value
@@ -447,7 +501,7 @@ class Sender:
 
             packet_creator.changeInputMode(1) #poslanie suboru
 
-            threading.Thread(target=self.thread_keepAlive, name="t1").start()
+            self.start_keepAlive()
             return True
         elif type == 7: #nACK
             print("\n\nKomunikáciu sa nepodarilo nadviazať!\n\nPrajete si znova začať komunikáciu ? (y/n) ", end="")
