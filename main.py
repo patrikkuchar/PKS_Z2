@@ -186,7 +186,7 @@ class Receiver:
 
         time.sleep(5.1)
 
-        if ex_SEQ >= self.arrived_SEQ:
+        if ex_SEQ >= self.arrived_SEQ and self.enabled_keepAlive:
             self.cancel_keepAlive_waiting()
 
 
@@ -266,6 +266,7 @@ class Receiver:
                 sender.pp_arrived_SEQ()
 
             elif type == 10: #keepAlive stop
+                print("Žiadosť o stopnutie keepAlive prijatá")
                 self.enabled_keepAlive = False
 
             elif type == 11: #FIN
@@ -413,9 +414,10 @@ class Sender:
         while self.enabled_keepAlive:
             #threading.Thread(target=self.waiting_for_keepAlive_packet).start()
             time.sleep(5)
-            if showKeepAlivePackets:
-                print("KeepAlive packet poslaný")
-            self.send_packet(packet_creator.create_KeepAlive(self.ppSEQ()))
+            if self.enabled_keepAlive:
+                if showKeepAlivePackets:
+                    print("KeepAlive packet poslaný")
+                self.send_packet(packet_creator.create_KeepAlive(self.ppSEQ()))
 
             if not self.keepAlive_arrived and self.enabled_keepAlive:
                 print("\nKomunikácia prerušená!\n")
@@ -516,6 +518,7 @@ def thread_waiting_for_input():
 
             if s == "k": #stop KeepAlive
                 print("KeepAlive stopnute")
+                sender.stop_keepAlive()
 
             #sender.set_enabled_keepAlive(False)  # prestane posielať keepAlive
             #receiver.cancel_waiting()  # prestane očakávať vstup
