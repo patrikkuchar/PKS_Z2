@@ -292,6 +292,13 @@ class Sender:
         self.target_path = ""
         self.file = ""
 
+        self.sock.bind(('', 0))
+        addr = self.sock.getsockname()
+        MY_PORT = addr[1]
+        hostname = socket.gethostname()
+        MY_IP = socket.gethostbyname(hostname)
+        packet_creator.set_MY_addr(MY_IP, MY_PORT)
+
         self.arrived_SEQ = 1
 
         self.packetsToSend = []
@@ -402,16 +409,8 @@ class Sender:
 
     def exceeded_waiting_for_SYN_packet(self):
         if inputMode != 1: #prijaty paket
-            hostname = socket.gethostname()
-            print(hostname)
-            MY_IP = socket.gethostbyname(hostname)
             nACK_p = packet_creator.create_nACK(0)
-
-            self.sock.bind(('', 0))
-            addr = self.sock.getsockname()
-            print("MYIP: " + addr[0])
-            print("MYPORT: " + str(addr[1]))
-            self.sock.sendto(nACK_p, addr)
+            self.sock.sendto(nACK_p, packet_creator.get_MY_addr())
 
 
     def waiting_for_SYN_packet(self):
@@ -432,8 +431,10 @@ class Sender:
             packet_creator.changeInputMode(1) #poslanie suboru
 
             threading.Thread(target=self.thread_keepAlive, name="t1").start()
+            return True
         elif type == 7: #nACK
-            print("\n\nKomunikáciu sa nepodarilo nadviazať!\n\nPrajete si znova začať komunikáciu (y/n)")
+            print("\n\nKomunikáciu sa nepodarilo nadviazať!\n\nPrajete si znova začať komunikáciu ? (y/n) ", end="")
+            return False
         else:
             print("Neznam co še pohubilo")
 
@@ -451,10 +452,7 @@ class Sender:
         self.TARGET_IP = input("Zadajte IP adresu prijímateľa: ")
         self.TARGET_PORT = int(input("Zadajte port prijímateľa: "))
 
-        #self.sock.bind(('', 0))
-        #addr = self.sock.getsockname()
-        #print("Mojo infošky")
-        #print(addr)
+
 
         packet_creator.send_socket(self.sock)
         packet_creator.set_TARGET_addr(self.TARGET_IP, self.TARGET_PORT)
@@ -463,7 +461,9 @@ class Sender:
         self.sock.sendto(syn_P, (self.TARGET_IP, self.TARGET_PORT))
         #self.send_packet(syn_P)
 
-        self.waiting_for_SYN_packet()
+        return self.waiting_for_SYN_packet()
+
+
 
 
 
@@ -481,8 +481,8 @@ def thread_waiting_for_input():
             if s == "y":
                 #receiver.setActiveClass(False)
 
-                sender.establish_com()
-                threading.Thread(target=receiver.restart_listening).start()
+                if sender.establish_com():
+                    threading.Thread(target=receiver.restart_listening).start()
 
 
         elif inputMode == 1: #poslat subor
