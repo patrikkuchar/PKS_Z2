@@ -382,7 +382,7 @@ class Sender:
 
     def stop_keepAlive(self):
         keepAliveStop_p = packet_creator.create_KeepAliveEND(self.ppSEQ())
-        self.keepAlive_arrived = False
+        self.enabled_keepAlive = False
         self.send_packet(keepAliveStop_p)
 
     def set_enabled_keepAlive(self, value):
