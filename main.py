@@ -112,7 +112,7 @@ class Receiver:
     def __init__(self, port):
         self.message = ""
         self.path = ""
-        self.file = ""
+        self.file = b""
 
         hostname = socket.gethostname()
         self.MY_IP = socket.gethostbyname(hostname)
@@ -165,6 +165,9 @@ class Receiver:
         f.write(self.file)
         f.close()
         print("Súbor bol uspešne uložený na adrese\n" + self.path + "\n")
+
+        self.path = ""
+        self.file = b""
 
     def send_packet(self, body, addr):
         packet_creator.sendPacket(body, addr)
@@ -238,6 +241,7 @@ class Receiver:
 
             elif type == 2: #PSH
                 print("Paket dorazil")
+
                 self.file += self.getDataFromPacket(data, False)
 
             elif type == 3: #PSH_F
