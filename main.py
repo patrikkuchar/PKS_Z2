@@ -24,10 +24,6 @@ class Packet_creator:
     def generateCRC(self, fragment):
         return fragment
 
-    def create_ACK(self, SEQ):
-        body = int.to_bytes(4, 1, "big")
-        body += int.to_bytes(SEQ, 4, "big")
-        return body
 
     def create_SYN(self):
         body = int.to_bytes(0, 1, "big") #type
@@ -52,26 +48,43 @@ class Packet_creator:
         body += data
         return self.generateCRC(body)
 
-    def create_KeepAlive(self, SEQ):
-        body = int.to_bytes(5, 1, "big") #type
-        body += int.to_bytes(SEQ, 4, "big") #seq
-        return body
-
-    def create_FIN(self, SEQ):
-        body = int.to_bytes(6, 1, "big") #type
-        body += int.to_bytes(SEQ, 4, "big") #seq
-        return body
-
     def create_MSG(self, SEQ, message):
-        body = int.to_bytes(7, 1, "big") #type
+        body = int.to_bytes(4, 1, "big") #type
         body += int.to_bytes(SEQ, 4, "big") #seq
         body += bytes(message, "utf-8")
         return body
 
-    def create_KeepAliveACK(self, SEQ):
+    def create_MSG_F(self, SEQ, message):
+        body = int.to_bytes(5, 1, "big") #type
+        body += int.to_bytes(SEQ, 4, "big") #seq
+        body += bytes(message, "utf-8")
+        return body
+
+    def create_ACK(self, SEQ):
+        body = int.to_bytes(6, 1, "big")
+        body += int.to_bytes(SEQ, 4, "big")
+        return body
+
+    def create_nACK(self, SEQ):
+        body = int.to_bytes(7, 1, "big")
+        body += int.to_bytes(SEQ, 4, "big")
+        return body
+
+    def create_KeepAlive(self, SEQ):
         body = int.to_bytes(8, 1, "big") #type
         body += int.to_bytes(SEQ, 4, "big") #seq
         return body
+
+    def create_KeepAliveACK(self, SEQ):
+        body = int.to_bytes(9, 1, "big") #type
+        body += int.to_bytes(SEQ, 4, "big") #seq
+        return body
+
+    def create_FIN(self, SEQ):
+        body = int.to_bytes(10, 1, "big") #type
+        body += int.to_bytes(SEQ, 4, "big") #seq
+        return body
+
 
 
     def get_type(self, body):
@@ -211,13 +224,24 @@ class Receiver:
             if type == 1: #INF
                 self.path = self.decodeData(data)
 
-            if type == 2: #PSH
+            elif type == 2: #PSH
                 self.file = data[5:]
                 self.saveData()
 
+            elif type == 3: #PSH_F
+                pass
 
+            elif type == 4: #sprava
+                print("Sprava dorazila")
+                print(data[5:])
 
-            if type == 5: #KeepAlive
+            elif type == 5: #sprava_F
+                pass
+
+            if type == 7: #keepAlive ACK
+                sender.pp_arrived_SEQ()
+
+            if type == 8: #KeepAlive
                 if showKeepAlivePackets:
                     print("KeepAlive packet prijatý")
 
@@ -232,15 +256,11 @@ class Receiver:
 
                 threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(SEQ, )).start()
 
-            if type == 6: #FIN
+            if type == 10: #FIN
                 print("Komunikácia úspešne ukončená")
 
-            if type == 7: #sprava
-                print("Sprava dorazila")
-                print(data[5:])
 
-            if type == 8: #keepAlive ACK
-                sender.pp_arrived_SEQ()
+
 
 
             if type == 254: #KeepAlive not arrived
@@ -379,21 +399,36 @@ class Sender:
                 break
 
 
+    def exceeded_waiting_for_SYN_packet(self):
+        if inputMode != 1: #prijaty paket
+            hostname = socket.gethostname()
+            MY_IP = socket.gethostbyname(hostname)
+            nACK_p = packet_creator.create_nACK(0)
+            packet_creator.sendPacket(nACK_p, (MY_IP, MY_PORT))
 
 
     def waiting_for_SYN_packet(self):
+        threading.Timer(0.5, self.exceeded_waiting_for_SYN_packet)
+
         data, addr = packet_creator.waitForPacket()
-        #data, addr = self.sock.recvfrom(1500)
-        print("\n\nKomunikácia nadviazaná!")
-        print("IP adresa prijímateľa: " + addr[0])
-        print("Port prijímateľa: " + str(addr[1]) + "\n\n")
 
-        print("Ako si prajete pokračovať:\na) Poslať správu\nb) Poslať súbor\nc) Ukončiť komunikáciu\n")
+        type = packet_creator.get_type(data)
 
-        packet_creator.changeInputMode(1) #poslanie suboru
+        if type == 6: #ACK
+            #data, addr = self.sock.recvfrom(1500)
+            print("\n\nKomunikácia nadviazaná!")
+            print("IP adresa prijímateľa: " + addr[0])
+            print("Port prijímateľa: " + str(addr[1]) + "\n\n")
 
+            print("Ako si prajete pokračovať:\na) Poslať správu\nb) Poslať súbor\nc) Ukončiť komunikáciu\n")
 
-        threading.Thread(target=self.thread_keepAlive, name="t1").start()
+            packet_creator.changeInputMode(1) #poslanie suboru
+
+            threading.Thread(target=self.thread_keepAlive, name="t1").start()
+        if type == 7: #nACK
+            print("\n\nKomunikáciu sa nepodarilo nadviazať!\n\nPrajete si znova začať komunikáciu (y/n)")
+        else:
+            print("Neznam co še pohubilo")
 
 
 
