@@ -2,6 +2,7 @@ import threading
 import socket
 import time
 import crcmod
+import random
 
 class Packet_creator:
     def __init__(self):
@@ -39,6 +40,9 @@ class Packet_creator:
             return True
         return False
 
+    def corruptData(self, fragment):
+        index = random.randrange(len(fragment))
+        return fragment[:index] + int.to_bytes(random.randrange(256), 1, "big") + fragment[index+1:]
 
     def create_SYN(self):
         body = int.to_bytes(0, 1, "big") #type
@@ -418,6 +422,9 @@ class Sender:
             #výpočet CRC
         self.packetsToSend.append(packet_creator.create_MSG_F(self.ppSEQ(), array_of_data[-1]))
         #výpočet CRC
+
+        #corruption of data
+        self.packetsToSend[-1] = packet_creator.corruptData(self.packetsToSend[-1])
 
         print("Odošle sa " + str(len(array_of_data)) + " paketov.")
 
