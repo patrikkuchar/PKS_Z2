@@ -1,8 +1,13 @@
 import threading
 import socket
 import time
+import crcmod
 
 class Packet_creator:
+    def __init__(self):
+        #http://crcmod.sourceforge.net/crcmod.html
+        self.crc_func = crcmod.mkCrcFun(0x10211, rev=False, initCrc=0x1d0f, xorOut=0x0000)
+
     def set_MY_addr(self, IP, port):
         self.MY_IP = IP
         self.MY_PORT = port
@@ -22,7 +27,17 @@ class Packet_creator:
         inputMode = value
 
     def generateCRC(self, fragment):
+        crc = self.crc_func(fragment)
+
+        fragment += int.to_bytes((crc >> 8) & 0xff, 1, "big")
+        fragment += int.to_bytes(crc & 0xff, 1, "big")
+
         return fragment
+
+    def checkCRC(self, fragment):
+        if self.crc_func(fragment) == 0:
+            return True
+        return False
 
 
     def create_SYN(self):
@@ -152,8 +167,8 @@ class Receiver:
 
     def getDataFromPacket(self, body, decode):
         if decode:
-            return body[5:].decode("utf-8")
-        return body[5:]
+            return body[5:-4].decode("utf-8")
+        return body[5:-4]
 
 
     def getReceiverInput(self):
@@ -361,10 +376,10 @@ class Sender:
         #self.sock.sendto(body, (self.TARGET_IP, self.TARGET_PORT))
 
     def send_prepared_packets(self):
-        count = 0
-        for protocol in self.packetsToSend:
-            count += 1
-            print(count)
+        for i, protocol in enumerate(self.packetsToSend):
+            print(i)
+            if i % 32 == 0:
+                time.sleep(0.5)
             self.send_packet(protocol)
         self.packetsToSend = []
 
