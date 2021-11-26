@@ -168,8 +168,8 @@ class Receiver:
     def getDataFromPacket(self, body, decode):
         if decode:
             print(body)
-            return body[5:-4].decode("utf-8")
-        return body[5:-4]
+            return body[5:-2].decode("utf-8")
+        return body[5:-2]
 
 
     def getReceiverInput(self):
