@@ -67,13 +67,13 @@ class Packet_creator:
         body = int.to_bytes(4, 1, "big") #type
         body += int.to_bytes(SEQ, 4, "big") #seq
         body += bytes(message, "utf-8")
-        return body
+        return self.generateCRC(body)
 
     def create_MSG_F(self, SEQ, message):
         body = int.to_bytes(5, 1, "big") #type
         body += int.to_bytes(SEQ, 4, "big") #seq
         body += bytes(message, "utf-8")
-        return body
+        return self.generateCRC(body)
 
     def create_ACK(self, SEQ):
         body = int.to_bytes(6, 1, "big")
@@ -257,26 +257,31 @@ class Receiver:
             if type == 1: #INF
                 #self.path = self.decodeData(data)
                 print("Paket cesty dorazil")
+                print(packet_creator.checkCRC(data))
                 self.path += self.getDataFromPacket(data, True)
 
 
             elif type == 2: #PSH
                 print("Paket dorazil")
+                print(packet_creator.checkCRC(data))
 
                 self.file += self.getDataFromPacket(data, False)
 
             elif type == 3: #PSH_F
                 print("Posledný paket dorazil")
+                print(packet_creator.checkCRC(data))
                 self.file += self.getDataFromPacket(data, False)
                 self.saveData()
 
             elif type == 4: #sprava
                 print("Paket dorazil")
+                print(packet_creator.checkCRC(data))
                 #crc kontrola
                 self.message += self.getDataFromPacket(data, True)
 
             elif type == 5: #sprava_F
                 print("Posledny paket dorazil")
+                print(packet_creator.checkCRC(data))
                 #crc kontrola
                 self.message += self.getDataFromPacket(data, True)
 
