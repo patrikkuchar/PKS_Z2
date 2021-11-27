@@ -159,9 +159,9 @@ class Packet_creator:
 
 class Receiver:
     def __init__(self, port):
-        self.message = ""
-        self.path = ""
-        self.file = b""
+        self.message = []
+        self.path = []
+        self.file = []
 
         hostname = socket.gethostname()
         self.MY_IP = socket.gethostbyname(hostname)
@@ -209,14 +209,30 @@ class Receiver:
     def setActiveClass(self, value):
         self.activeClass = value
 
-    def saveData(self):
-        f = open(self.path, "w+b")
-        f.write(self.file)
-        f.close()
-        print("Súbor bol uspešne uložený na adrese\n" + self.path + "\n")
+    def insertData(self, arr, data):
+        for i, one_data in enumerate(arr):
+            if packet_creator.get_SEQ(data) < packet_creator.get_SEQ(one_data):
+                arr.insert(i, data)
+                return arr
+        arr.append(data)
+        return arr
 
-        self.path = ""
-        self.file = b""
+    def saveData(self):
+        path = ""
+        file = b""
+
+        for part in self.path:
+            path += self.getDataFromPacket(part, True)
+        for part in self.file:
+            file += self.getDataFromPacket(part, False)
+
+        f = open(path, "w+b")
+        f.write(file)
+        f.close()
+        print("Súbor bol uspešne uložený na adrese\n" + path + "\n")
+
+        self.path = []
+        self.file = []
 
     def send_packet(self, body, addr):
         packet_creator.sendPacket(body, addr)
@@ -290,39 +306,65 @@ class Receiver:
                 threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(0, )).start()
 
             if type >= 1 and type <= 5:
+
                 if packet_creator.checkCRC(data):
                     ack_P = packet_creator.create_ACK(SEQ)
                     self.send_packet(ack_P, addr)
 
                     if type == 1:  # INF
+                        if len(self.path) == 0:
+                            self.path.append(data)
+                        else:
+                            self.path = self.insertData(self.path, data)
+
                         # self.path = self.decodeData(data)
                         # "Paket cesty dorazil")
-                        self.path += self.getDataFromPacket(data, True)
+
+                        #self.path += self.getDataFromPacket(data, True)
 
 
                     elif type == 2:  # PSH
                         # print("Paket dorazil")
+                        if len(self.file) == 0:
+                            self.file.append(data)
+                        else:
+                            self.file = self.insertData(self.file, data)
 
-                        self.file += self.getDataFromPacket(data, False)
+                        #self.file += self.getDataFromPacket(data, False)
 
                     elif type == 3:  # PSH_F
                         # print("Posledný paket dorazil")
                         # print(packet_creator.checkCRC(data))
-                        self.file += self.getDataFromPacket(data, False)
+                        if len(self.file) == 0:
+                            self.file.append(data)
+                        else:
+                            self.file = self.insertData(self.file, data)
+                        #self.file += self.getDataFromPacket(data, False)
                         self.saveData()
 
                     elif type == 4:  # sprava
                         # print("Paket dorazil")
                         # crc kontrola
-                        self.message += self.getDataFromPacket(data, True)
+                        if len(self.message) == 0:
+                            self.message.append(data)
+                        else:
+                            self.message = self.insertData(self.message, data)
+                        #self.message += self.getDataFromPacket(data, True)
 
                     elif type == 5:  # sprava_F
                         # print("Posledny paket dorazil")
                         # crc kontrola
-                        self.message += self.getDataFromPacket(data, True)
+                        if len(self.message) == 0:
+                            self.message.append(data)
+                        else:
+                            self.message = self.insertData(self.message, data)
+                        #self.message += self.getDataFromPacket(data, True)
+                        print(">> ", end="")
+                        for part in self.message:
+                            print(self.getDataFromPacket(part, True), end="")
+                        print()
 
-                        print(">> " + self.message)
-                        self.message = ""
+                        self.message = []
                 else:
                     nack_p = packet_creator.create_nACK(SEQ)
                     self.send_packet(nack_p, addr)
