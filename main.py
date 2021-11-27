@@ -509,6 +509,7 @@ class Sender:
         self.arrived_SEQ = packet_creator.getSEQ_num()
         packet_creator.set_enabled_KeepAlive(True)
         #self.enabled_keepAlive = True
+        print("start_KEEEPALIV")
         threading.Thread(target=self.thread_keepAlive, name="t1").start()
 
     def exceeded_waiting_for_keepAlive(self, ex_SEQ):
@@ -551,7 +552,6 @@ class Sender:
     def waiting_for_SYN_packet(self):
         threading.Timer(0.5, self.exceeded_waiting_for_SYN_packet).start()
 
-        print("TUSOMDOšoioooooooool")
 
         data, addr = packet_creator.waitForPacket()
 
