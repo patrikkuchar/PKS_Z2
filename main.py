@@ -254,12 +254,20 @@ class Receiver:
         packet_creator.sendPacket(int.to_bytes(254, 1, "big"), (self.MY_IP, self.MY_PORT))
         #self.sock.sendto(int.to_bytes(254, 1, "big"), (self.MY_IP, self.MY_PORT))
 
-    def exceeded_waiting_for_keepAlive(self, ex_SEQ):
+    def exceeded_waiting_for_keepAlive(self, SEQ):
 
         time.sleep(5.1)
 
-        if ex_SEQ >= self.arrived_SEQ and packet_creator.enabled_KeepAlive():
+        if SEQ >= self.arrived_SEQ and packet_creator.enabled_KeepAlive():
             self.cancel_keepAlive_waiting()
+
+    def exceeded_waiting_for_packet(self, SEQ):
+
+        time.sleep(0.5)
+
+        if SEQ >= self.arrived_SEQ:
+            print("SPOJENE PRERUŠENO MORE")
+            exit()
 
 
     def waiting_for_packet(self):
@@ -310,6 +318,9 @@ class Receiver:
                 if packet_creator.checkCRC(data):
                     ack_P = packet_creator.create_ACK(SEQ)
                     self.send_packet(ack_P, addr)
+
+                    if type != 3 or type != 5:
+                        threading.Thread(target=self.exceeded_waiting_for_packet, args=(SEQ,)).start()
 
                     if type == 1:  # INF
                         if len(self.path) == 0:
