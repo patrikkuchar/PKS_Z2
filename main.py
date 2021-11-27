@@ -326,7 +326,7 @@ class Receiver:
                     ack_P = packet_creator.create_ACK(SEQ)
                     self.send_packet(ack_P, addr)
 
-                    if type != 3 or type != 5:
+                    #if type != 3 or type != 5:
                         #threading.Thread(target=self.exceeded_waiting_for_packet, args=(SEQ,)).start()
 
                     if type == 1:  # INF
