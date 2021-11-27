@@ -229,7 +229,14 @@ class Receiver:
         f = open(path, "w+b")
         f.write(file)
         f.close()
-        print("Súbor bol uspešne uložený na adrese\n" + path + "\n")
+        end_time_recvFile = time.time()
+        print("Súbor bol úspešne prijatý.")
+        print("Veľkosť súboru: " + str(len(file)) + "B")
+        print("Počet fragmentov: " + str(len(self.path) + len(self.file)))
+        print("Počet dát v jednom fragmente: " + str(len(self.file[0]) - 7))
+        print("Čas prenosu súboru: " + str(round((end_time_recvFile - self.start_time_recvFile) / 1000, 4)) + "s")
+        print("Cesta k súboru: '" + path + "'")
+
 
         self.path = []
         self.file = []
@@ -324,6 +331,7 @@ class Receiver:
 
                     if type == 1:  # INF
                         if len(self.path) == 0:
+                            self.start_time_recvFile = time.time()
                             self.path.append(data)
                         else:
                             self.path = self.insertData(self.path, data)
@@ -504,9 +512,15 @@ class Sender:
 
         if len(self.packetsInWindow) == 0: ##všetky pakety odoslané
             if packet_creator.get_type(self.packetsToSend[-1]) == 3: #PSH_F
+                end_time_sendFile = time.time()
                 print("Súbor úspešne odoslaný")
+                print("Cesta k súboru na uzle prijímača: '" + self.add_filename() + "'")
+                print("Čas odoslania: " + str(round((end_time_sendFile - self.start_time_sendFile) / 1000, 4)) + "s")
+
             else:
                 print("Správa úspešne odoslaná")
+
+
 
             packet_creator.changeInputMode(1)
             self.packetsToSend = []
@@ -645,7 +659,8 @@ class Sender:
         self.packetsToSend.append(packet_creator.create_PSH_F(packet_creator.ppSEQ(), array_of_data[-1]))
         # výpočet CRC
 
-        print("Odošle sa " + str(len(self.packetsToSend)) + " paketov.")
+        print("Odošle sa " + str(len(self.packetsToSend)) + " paketov o veľkosti " + str(len(read)) + "B. ")
+        self.start_time_sendFile = time.time()
         self.send_prepared_packets()
         #print("Súbor úspešne odoslaný.")
 
