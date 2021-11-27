@@ -127,6 +127,7 @@ class Packet_creator:
         self.sck = socket
 
     def sendPacket(self, body, addr):
+        print("SEQ: " + str(self.get_SEQ(body)))
         self.sck.sendto(body, addr)
 
     def waitForPacket(self):
@@ -171,7 +172,6 @@ class Receiver:
 
     def getDataFromPacket(self, body, decode):
         if decode:
-            print(body)
             return body[5:-2].decode("utf-8")
         return body[5:-2]
 
@@ -261,31 +261,31 @@ class Receiver:
 
             if type == 1: #INF
                 #self.path = self.decodeData(data)
-                print("Paket cesty dorazil")
+                #"Paket cesty dorazil")
                 print(packet_creator.checkCRC(data))
                 self.path += self.getDataFromPacket(data, True)
 
 
             elif type == 2: #PSH
-                print("Paket dorazil")
+                #print("Paket dorazil")
                 print(packet_creator.checkCRC(data))
 
                 self.file += self.getDataFromPacket(data, False)
 
             elif type == 3: #PSH_F
-                print("Posledný paket dorazil")
-                print(packet_creator.checkCRC(data))
+                #print("Posledný paket dorazil")
+                #print(packet_creator.checkCRC(data))
                 self.file += self.getDataFromPacket(data, False)
                 self.saveData()
 
             elif type == 4: #sprava
-                print("Paket dorazil")
+                #print("Paket dorazil")
                 print(packet_creator.checkCRC(data))
                 #crc kontrola
                 self.message += self.getDataFromPacket(data, True)
 
             elif type == 5: #sprava_F
-                print("Posledny paket dorazil")
+                #print("Posledny paket dorazil")
                 print(packet_creator.checkCRC(data))
                 #crc kontrola
                 self.message += self.getDataFromPacket(data, True)
@@ -387,15 +387,17 @@ class Sender:
 
     def send_prepared_packets(self):
         for i, protocol in enumerate(self.packetsToSend):
-            print(i)
             if i % 32 == 0:
                 time.sleep(0.5)
             self.send_packet(protocol)
         self.packetsToSend = []
 
+
+        self.start_keepAlive()
+
     def ask_for_size(self):
         while True:
-            size = int(input("Zadajte počet bajtov pre dáta jedného fragmentu (1-1465)"))
+            size = int(input("Zadajte počet bajtov pre dáta jedného fragmentu (1-1465): "))
             if size >= 1 and size <= 1465:
                 break
         return size
@@ -424,7 +426,7 @@ class Sender:
         #výpočet CRC
 
         #corruption of data
-        self.packetsToSend[-1] = packet_creator.corruptData(self.packetsToSend[-1])
+        #self.packetsToSend[-1] = packet_creator.corruptData(self.packetsToSend[-1])
 
         print("Odošle sa " + str(len(array_of_data)) + " paketov.")
 
