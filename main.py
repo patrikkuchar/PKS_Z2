@@ -327,7 +327,7 @@ class Receiver:
                     self.send_packet(ack_P, addr)
 
                     if type != 3 or type != 5:
-                        threading.Thread(target=self.exceeded_waiting_for_packet, args=(SEQ,)).start()
+                        #threading.Thread(target=self.exceeded_waiting_for_packet, args=(SEQ,)).start()
 
                     if type == 1:  # INF
                         if len(self.path) == 0:
@@ -841,8 +841,8 @@ def thread_waiting_for_input():
 
 
 showKeepAlivePackets = False
-showSentPackets = True
-showReceivedPackets = True
+showSentPackets = False
+showReceivedPackets = False
 
 MY_PORT = int(input("Zadajte port, na ktorom očakávate komunikáciu: "))
 
