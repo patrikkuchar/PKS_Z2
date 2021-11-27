@@ -7,6 +7,7 @@ import random
 class Packet_creator:
     def __init__(self):
         #http://crcmod.sourceforge.net/crcmod.html
+        self.SEQ_num = 0
         self.crc_func = crcmod.mkCrcFun(0x10211, rev=False, initCrc=0x1d0f, xorOut=0x0000)
 
     def set_MY_addr(self, IP, port):
@@ -115,13 +116,18 @@ class Packet_creator:
     def enabled_KeepAlive(self):
         return self.enabled_KA
 
-
-
     def get_type(self, body):
         return body[0]
 
     def get_SEQ(self, body):
         return int.from_bytes(body[1:5], "big")
+
+    def ppSEQ(self):
+        self.SEQ_num += 1
+        return self.SEQ_num
+
+    def setSEQ_num(self, value):
+        self.SEQ_num = value
 
     def send_socket(self, socket):
         self.sck = socket
@@ -233,6 +239,10 @@ class Receiver:
 
             type = packet_creator.get_type(data)
 
+            SEQ = packet_creator.get_SEQ(data)
+
+            packet_creator.setSEQ_num(SEQ)
+
             if type == 0: #SYN
                 self.synchronized = True
 
@@ -302,7 +312,6 @@ class Receiver:
                 if showKeepAlivePackets:
                     print("KeepAlive packet prijatý")
 
-                SEQ = packet_creator.get_SEQ(data)
 
                 self.arrived_SEQ = SEQ
 
@@ -348,7 +357,6 @@ class Sender:
         self.sock = socket.socket(socket.AF_INET,  # Internet
                              socket.SOCK_DGRAM)  # UDP
 
-        self.SEQ_num = 0
 
 
         self.local_path = ""
@@ -363,7 +371,6 @@ class Sender:
         MY_IP = socket.gethostbyname(hostname)
         packet_creator.set_MY_addr(MY_IP, MY_PORT)
 
-        self.arrived_SEQ = 1
 
         self.packetsToSend = []
 
@@ -377,9 +384,6 @@ class Sender:
     def set_TARGET_ADDR(self, addr):
         self.TARGET_IP = addr[0]
         self.TARGET_PORT = addr[1]
-
-    def get_SEQ(self, body):
-        return int.from_bytes(body[1:5], "big")
 
     def send_packet(self, body):
         packet_creator.sendPacket(body, packet_creator.get_TARGET_addr())
@@ -420,9 +424,9 @@ class Sender:
         array_of_data = self.split_data(message, size)
 
         for one_data in array_of_data[:-1]:
-            self.packetsToSend.append(packet_creator.create_MSG(self.ppSEQ(), one_data))
+            self.packetsToSend.append(packet_creator.create_MSG(packet_creator.ppSEQ(), one_data))
             #výpočet CRC
-        self.packetsToSend.append(packet_creator.create_MSG_F(self.ppSEQ(), array_of_data[-1]))
+        self.packetsToSend.append(packet_creator.create_MSG_F(packet_creator.ppSEQ(), array_of_data[-1]))
         #výpočet CRC
 
         #corruption of data
@@ -443,9 +447,6 @@ class Sender:
 
         packet_creator.changeInputMode(1)
 
-    def ppSEQ(self):
-        self.SEQ_num += 1
-        return self.SEQ_num
 
     def add_filename(self):
         filename = ""
@@ -472,16 +473,16 @@ class Sender:
         ## príprava cesty
         array_of_data = self.split_data(self.add_filename(), size)
         for one_data in array_of_data:
-            self.packetsToSend.append(packet_creator.create_INF(self.ppSEQ(), one_data))
+            self.packetsToSend.append(packet_creator.create_INF(packet_creator.ppSEQ(), one_data))
             # výpočet CRC
 
 
         ## príprava súboru
         array_of_data = self.split_data(read, size)
         for one_data in array_of_data[:-1]:
-            self.packetsToSend.append(packet_creator.create_PSH(self.ppSEQ(), one_data))
+            self.packetsToSend.append(packet_creator.create_PSH(packet_creator.ppSEQ(), one_data))
             # výpočet CRC
-        self.packetsToSend.append(packet_creator.create_PSH_F(self.ppSEQ(), array_of_data[-1]))
+        self.packetsToSend.append(packet_creator.create_PSH_F(packet_creator.ppSEQ(), array_of_data[-1]))
         # výpočet CRC
 
         print("Odošle sa " + str(len(self.packetsToSend)) + " paketov.")
@@ -492,16 +493,17 @@ class Sender:
 
     def end_com(self):
         self.stop_keepAlive()
-        fin_p = packet_creator.create_FIN(self.ppSEQ())
+        fin_p = packet_creator.create_FIN(packet_creator.ppSEQ())
         packet_creator.sendPacket(fin_p, packet_creator.get_TARGET_addr())
 
     def stop_keepAlive(self):
-        keepAliveStop_p = packet_creator.create_KeepAliveEND(self.ppSEQ())
+        keepAliveStop_p = packet_creator.create_KeepAliveEND(packet_creator.ppSEQ())
         packet_creator.set_enabled_KeepAlive(False)
         #self.enabled_keepAlive = False
         self.send_packet(keepAliveStop_p)
 
     def start_keepAlive(self):
+        self.arrived_SEQ = 1
         packet_creator.set_enabled_KeepAlive(True)
         #self.enabled_keepAlive = True
         threading.Thread(target=self.thread_keepAlive, name="t1").start()
@@ -519,12 +521,6 @@ class Sender:
     def pp_arrived_SEQ(self):
         self.arrived_SEQ += 1
 
-    #def waiting_for_keepAlive_packet(self):
-        #data, addr = packet_creator.waitForPacket()
-        ##data, addr = self.sock.recvfrom(1500)
-        #self.arrived_SEQ = self.get_SEQ(data)
-        #print(str(self.arrived_SEQ))
-
     def thread_keepAlive(self):
         packet_creator.set_enabled_KeepAlive(True)
         #self.enabled_keepAlive = True
@@ -536,7 +532,7 @@ class Sender:
             if packet_creator.enabled_KeepAlive():
                 if showKeepAlivePackets:
                     print("KeepAlive packet poslaný")
-                self.send_packet(packet_creator.create_KeepAlive(self.ppSEQ()))
+                self.send_packet(packet_creator.create_KeepAlive(packet_creator.ppSEQ()))
 
             if not self.keepAlive_arrived and packet_creator.enabled_KeepAlive():
                 print("\nKomunikácia prerušená!\n")
