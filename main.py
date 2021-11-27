@@ -282,40 +282,53 @@ class Receiver:
                 self.keepAlive_arrived = False
                 threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(0, )).start()
 
-            if type == 1: #INF
-                #self.path = self.decodeData(data)
-                #"Paket cesty dorazil")
-                print(packet_creator.checkCRC(data))
-                self.path += self.getDataFromPacket(data, True)
+            if type >= 1 and type <= 5:
+                if packet_creator.checkCRC(data):
+                    ack_P = packet_creator.create_ACK(SEQ)
+                    self.send_packet(ack_P, addr)
+
+                    if type == 1:  # INF
+                        # self.path = self.decodeData(data)
+                        # "Paket cesty dorazil")
+                        self.path += self.getDataFromPacket(data, True)
 
 
-            elif type == 2: #PSH
-                #print("Paket dorazil")
-                print(packet_creator.checkCRC(data))
+                    elif type == 2:  # PSH
+                        # print("Paket dorazil")
 
-                self.file += self.getDataFromPacket(data, False)
+                        self.file += self.getDataFromPacket(data, False)
 
-            elif type == 3: #PSH_F
-                #print("Posledný paket dorazil")
-                #print(packet_creator.checkCRC(data))
-                self.file += self.getDataFromPacket(data, False)
-                self.saveData()
+                    elif type == 3:  # PSH_F
+                        # print("Posledný paket dorazil")
+                        # print(packet_creator.checkCRC(data))
+                        self.file += self.getDataFromPacket(data, False)
+                        self.saveData()
 
-            elif type == 4: #sprava
-                #print("Paket dorazil")
-                print(packet_creator.checkCRC(data))
-                #crc kontrola
-                self.message += self.getDataFromPacket(data, True)
+                    elif type == 4:  # sprava
+                        # print("Paket dorazil")
+                        # crc kontrola
+                        self.message += self.getDataFromPacket(data, True)
 
-            elif type == 5: #sprava_F
-                #print("Posledny paket dorazil")
-                print(packet_creator.checkCRC(data))
-                #crc kontrola
-                self.message += self.getDataFromPacket(data, True)
+                    elif type == 5:  # sprava_F
+                        # print("Posledny paket dorazil")
+                        # crc kontrola
+                        self.message += self.getDataFromPacket(data, True)
 
-                print(">> " + self.message)
-                self.message = ""
+                        print(">> " + self.message)
+                        self.message = ""
+                else:
+                    nack_p = packet_creator.create_nACK(SEQ)
+                    self.send_packet(nack_p, addr)
 
+
+
+            elif type == 6: #ACK
+                sender.set_arrived_SEQ(SEQ)
+                sender.move_window()
+
+            elif type == 7: #nACK
+                sender.set_arrived_SEQ(SEQ)
+                sender.send_again_packet(SEQ)
 
 
             elif type == 8: #KeepAlive
@@ -384,6 +397,8 @@ class Sender:
         MY_IP = socket.gethostbyname(hostname)
         packet_creator.set_MY_addr(MY_IP, MY_PORT)
 
+        self.window = 4
+
 
         self.packetsToSend = []
 
@@ -402,6 +417,38 @@ class Sender:
         packet_creator.sendPacket(body, packet_creator.get_TARGET_addr())
         #self.sock.sendto(body, (self.TARGET_IP, self.TARGET_PORT))
 
+    def exceeded_waiting_for_ACK(self, SEQ):
+        if SEQ > self.arrived_SEQ: ##nedošiel packet
+            self.send_again_packet(SEQ)
+
+    def send_again_packet(self, SEQ):
+        self.send_packet(self.packetsToSend[0])
+        threading.Timer(0.5, self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(self.packetsToSend[0]),))
+
+    def move_window(self):
+        if self.packetsToSend[-1] != self.packetsInWindow[-1]:
+            self.lastIndexInWindow += 1
+            self.packetsInWindow.append(self.packetsToSend[self.lastIndexInWindow])
+
+            self.send_packet(self.packetsInWindow[-1])
+            threading.Timer(0.5, self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(self.packetsToSend[-1]),))
+
+        self.packetsInWindow.pop(0)
+
+        if len(self.packetsInWindow) == 0: ##všetky pakety odoslané
+            if packet_creator.get_type(self.packetsToSend[-1]) == 3: #PSH_F
+                print("Súbor úspešne odoslaný")
+            else:
+                print("Správa úspešne odoslaná")
+
+            self.packetsToSend = []
+            time.sleep(5)
+            self.start_keepAlive()
+
+
+
+
+
     def send_prepared_packets(self):
         for i, protocol in enumerate(self.packetsToSend):
             if i % 32 == 0:
@@ -411,6 +458,27 @@ class Sender:
 
         time.sleep(5)
         self.start_keepAlive()
+
+        self.arrived_SEQ = packet_creator.get_SEQ(self.packetsToSend[0]) - 1
+
+        self.packetsInWindow = []
+        for i in range(self.window):
+            self.packetsInWindow.append(self.packetsToSend[i])
+
+        self.lastIndexInWindow = self.window - 1
+
+
+        #pošlem všetky pakety z okna
+        for i, protocol in enumerate(self.packetsInWindow):
+            if i % 32 == 0:
+                time.sleep(0.5)
+            self.send_packet(protocol)
+            threading.Timer(0.5, self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(protocol),))
+
+
+
+
+
 
     def ask_for_size(self):
         while True:
@@ -534,6 +602,9 @@ class Sender:
 
     def pp_arrived_SEQ(self):
         self.arrived_SEQ += 1
+
+    def set_arrived_SEQ(self, value):
+        self.arrived_SEQ = value
 
     def thread_keepAlive(self):
         packet_creator.set_enabled_KeepAlive(True)
