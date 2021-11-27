@@ -129,6 +129,9 @@ class Packet_creator:
     def setSEQ_num(self, value):
         self.SEQ_num = value
 
+    def getSEQ_num(self):
+        return self.SEQ_num
+
     def send_socket(self, socket):
         self.sck = socket
 
@@ -503,7 +506,7 @@ class Sender:
         self.send_packet(keepAliveStop_p)
 
     def start_keepAlive(self):
-        self.arrived_SEQ = 1
+        self.arrived_SEQ = packet_creator.getSEQ_num() - 1
         packet_creator.set_enabled_KeepAlive(True)
         #self.enabled_keepAlive = True
         threading.Thread(target=self.thread_keepAlive, name="t1").start()
