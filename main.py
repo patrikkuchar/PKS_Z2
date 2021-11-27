@@ -551,6 +551,8 @@ class Sender:
     def waiting_for_SYN_packet(self):
         threading.Timer(0.5, self.exceeded_waiting_for_SYN_packet).start()
 
+        print("TUSOMDOšoioooooooool")
+
         data, addr = packet_creator.waitForPacket()
 
         type = packet_creator.get_type(data)
