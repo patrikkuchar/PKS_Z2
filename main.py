@@ -141,7 +141,9 @@ class Packet_creator:
 
     def sendPacket(self, body, addr):
         if showSentPackets:
-            print("<- " + self.get_nameOf_type(self.get_type(body)) + " - SEQ: " + str(self.get_SEQ(body)))
+            type = self.get_type(body)
+            if type < 13:
+                print("<- " + self.get_nameOf_type(type) + " - SEQ: " + str(self.get_SEQ(body)))
         self.sck.sendto(body, addr)
 
     def waitForPacket(self):
@@ -251,7 +253,7 @@ class Receiver:
 
             packet_creator.setSEQ_num(SEQ)
 
-            if showReceivedPackets:
+            if showReceivedPackets and type < 13:
                 print("-> " + packet_creator.get_nameOf_type(type), " - SEQ: " + str(SEQ))
 
             if type == 0: #SYN
