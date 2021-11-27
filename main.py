@@ -440,7 +440,7 @@ class Sender:
         threading.Timer(0.5, self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(self.packetsToSend[0]),))
 
     def move_window(self):
-        if self.packetsToSend[-1] != self.packetsInWindow[-1]:
+        if self.lastIndexInWindow != len(self.packetsInWindow) - 1:
             self.lastIndexInWindow += 1
             self.packetsInWindow.append(self.packetsToSend[self.lastIndexInWindow])
 
