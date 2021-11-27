@@ -506,7 +506,7 @@ class Sender:
         self.send_packet(keepAliveStop_p)
 
     def start_keepAlive(self):
-        self.arrived_SEQ = packet_creator.getSEQ_num() - 1
+        self.arrived_SEQ = packet_creator.getSEQ_num()
         packet_creator.set_enabled_KeepAlive(True)
         #self.enabled_keepAlive = True
         threading.Thread(target=self.thread_keepAlive, name="t1").start()
