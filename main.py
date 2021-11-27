@@ -399,7 +399,7 @@ class Sender:
             self.send_packet(protocol)
         self.packetsToSend = []
 
-
+        time.sleep(5)
         self.start_keepAlive()
 
     def ask_for_size(self):
