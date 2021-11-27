@@ -110,6 +110,10 @@ class Packet_creator:
         body += int.to_bytes(SEQ, 4, "big") #seq
         return body
 
+    def get_nameOf_type(self, type):
+        types = ["SYN", "INF", "PSH", "PSH_F", "MSG", "MSG_F", "ACK", "nACK", "KeepAlive", "KeepAlive_ACK", "KeepAlive_END", "FIN"]
+        return types[type]
+
     def set_enabled_KeepAlive(self, value):
         self.enabled_KA = value
 
@@ -136,7 +140,8 @@ class Packet_creator:
         self.sck = socket
 
     def sendPacket(self, body, addr):
-        print("SEQ: " + str(self.get_SEQ(body)))
+        if showSentPackets:
+            print("<- " + self.get_nameOf_type(self.get_type(body)) + " - SEQ: " + str(self.get_SEQ(body)))
         self.sck.sendto(body, addr)
 
     def waitForPacket(self):
@@ -245,6 +250,9 @@ class Receiver:
             SEQ = packet_creator.get_SEQ(data)
 
             packet_creator.setSEQ_num(SEQ)
+
+            if showReceivedPackets:
+                print("-> " + packet_creator.get_nameOf_type(type), " - SEQ: " + str(SEQ))
 
             if type == 0: #SYN
                 self.synchronized = True
@@ -666,6 +674,8 @@ def thread_waiting_for_input():
 
 
 showKeepAlivePackets = False
+showSentPackets = True
+showReceivedPackets = True
 
 MY_PORT = int(input("Zadajte port, na ktorom očakávate komunikáciu: "))
 
