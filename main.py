@@ -8,7 +8,14 @@ class Packet_creator:
     def __init__(self):
         #http://crcmod.sourceforge.net/crcmod.html
         self.SEQ_num = 0
+        self.prcOfCorrupted = 0.1
         self.crc_func = crcmod.mkCrcFun(0x10211, rev=False, initCrc=0x1d0f, xorOut=0x0000)
+
+    def get_prcOfCorrupted(self):
+        return self.prcOfCorrupted
+
+    def set_prcOfCorrupted(self, value):
+        self.prcOfCorrupted = value
 
     def set_MY_addr(self, IP, port):
         self.MY_IP = IP
@@ -417,12 +424,19 @@ class Sender:
         packet_creator.sendPacket(body, packet_creator.get_TARGET_addr())
         #self.sock.sendto(body, (self.TARGET_IP, self.TARGET_PORT))
 
+    def send_and_corrupt_packet(self, body):
+        if len(self.corrupted) != 0 and self.corrupted[0] == packet_creator.get_SEQ(body):
+            self.send_packet(packet_creator.corruptData(body))
+            self.corrupted.pop(0)
+        else:
+            self.send_packet(body)
+
     def exceeded_waiting_for_ACK(self, SEQ):
         if SEQ > self.arrived_SEQ: ##nedošiel packet
             self.send_again_packet(SEQ)
 
     def send_again_packet(self, SEQ):
-        self.send_packet(self.packetsToSend[0])
+        self.send_and_corrupt_packet(self.packetsToSend[0])
         threading.Timer(0.5, self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(self.packetsToSend[0]),))
 
     def move_window(self):
@@ -430,7 +444,7 @@ class Sender:
             self.lastIndexInWindow += 1
             self.packetsInWindow.append(self.packetsToSend[self.lastIndexInWindow])
 
-            self.send_packet(self.packetsInWindow[-1])
+            self.send_and_corrupt_packet(self.packetsInWindow[-1])
             threading.Timer(0.5, self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(self.packetsToSend[-1]),))
 
         self.packetsInWindow.pop(0)
@@ -460,6 +474,17 @@ class Sender:
         #time.sleep(5)
         #self.start_keepAlive()
 
+        ##corrupt data
+        numOfPackets = len(self.packetsToSend)
+        numForCorrupt = int(packet_creator.get_prcOfCorrupted() * numOfPackets)
+        self.corrupted = []
+        for i in range(numForCorrupt):
+            self.corrupted.append(packet_creator.get_SEQ(self.packetsToSend[random.randrange(numOfPackets)]))
+        self.corrupted.sort()
+
+
+
+
         self.arrived_SEQ = packet_creator.get_SEQ(self.packetsToSend[0]) - 1
 
         self.packetsInWindow = []
@@ -473,7 +498,7 @@ class Sender:
         for i, protocol in enumerate(self.packetsInWindow):
             if i % 32 == 0:
                 time.sleep(0.5)
-            self.send_packet(protocol)
+            self.send_and_corrupt_packet(protocol)
             threading.Timer(0.5, self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(protocol),))
 
 
