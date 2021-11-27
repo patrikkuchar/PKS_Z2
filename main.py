@@ -441,6 +441,7 @@ class Sender:
             else:
                 print("Správa úspešne odoslaná")
 
+            packet_creator.changeInputMode(1)
             self.packetsToSend = []
             time.sleep(5)
             self.start_keepAlive()
@@ -450,14 +451,14 @@ class Sender:
 
 
     def send_prepared_packets(self):
-        for i, protocol in enumerate(self.packetsToSend):
-            if i % 32 == 0:
-                time.sleep(0.5)
-            self.send_packet(protocol)
-        self.packetsToSend = []
+        #for i, protocol in enumerate(self.packetsToSend):
+            #if i % 32 == 0:
+                #time.sleep(0.5)
+            #self.send_packet(protocol)
+        #self.packetsToSend = []
 
-        time.sleep(5)
-        self.start_keepAlive()
+        #time.sleep(5)
+        #self.start_keepAlive()
 
         self.arrived_SEQ = packet_creator.get_SEQ(self.packetsToSend[0]) - 1
 
@@ -523,10 +524,10 @@ class Sender:
 
         #self.send_packet(msg_P)
 
-        print("Správa úspešne odoslaná.")
+        #print("Správa úspešne odoslaná.")
 
 
-        packet_creator.changeInputMode(1)
+        packet_creator.changeInputMode(-1) #off
 
 
     def add_filename(self):
@@ -568,9 +569,9 @@ class Sender:
 
         print("Odošle sa " + str(len(self.packetsToSend)) + " paketov.")
         self.send_prepared_packets()
-        print("Súbor úspešne odoslaný.")
+        #print("Súbor úspešne odoslaný.")
 
-        packet_creator.changeInputMode(1)
+        packet_creator.changeInputMode(-1) #off
 
     def end_com(self):
         self.stop_keepAlive()
