@@ -49,72 +49,72 @@ class Packet_creator:
         return False
 
     def corruptData(self, fragment):
-        index = random.randrange(len(fragment))
+        index = random.randrange(len(fragment)-3) + 3
         return fragment[:index] + int.to_bytes(random.randrange(256), 1, "big") + fragment[index+1:]
 
     def create_SYN(self):
         body = int.to_bytes(0, 1, "big") #type
-        body += int.to_bytes(0, 4, "big") #seq
+        body += int.to_bytes(0, 2, "big") #seq
         return body
 
     def create_INF(self, SEQ, data):
         body = int.to_bytes(1, 1, "big") #type
-        body += int.to_bytes(SEQ, 4, "big") #seq
+        body += int.to_bytes(SEQ, 2, "big") #seq
         body += bytes(data, "utf-8")
         return self.generateCRC(body)
 
     def create_PSH(self, SEQ, data):
         body = int.to_bytes(2, 1, "big") #type
-        body += int.to_bytes(SEQ, 4, "big") #seq
+        body += int.to_bytes(SEQ, 2, "big") #seq
         body += data
         return self.generateCRC(body)
 
     def create_PSH_F(self, SEQ, data):
         body = int.to_bytes(3, 1, "big") #type
-        body += int.to_bytes(SEQ, 4, "big") #seq
+        body += int.to_bytes(SEQ, 2, "big") #seq
         body += data
         return self.generateCRC(body)
 
     def create_MSG(self, SEQ, message):
         body = int.to_bytes(4, 1, "big") #type
-        body += int.to_bytes(SEQ, 4, "big") #seq
+        body += int.to_bytes(SEQ, 2, "big") #seq
         body += bytes(message, "utf-8")
         return self.generateCRC(body)
 
     def create_MSG_F(self, SEQ, message):
         body = int.to_bytes(5, 1, "big") #type
-        body += int.to_bytes(SEQ, 4, "big") #seq
+        body += int.to_bytes(SEQ, 2, "big") #seq
         body += bytes(message, "utf-8")
         return self.generateCRC(body)
 
     def create_ACK(self, SEQ):
         body = int.to_bytes(6, 1, "big")
-        body += int.to_bytes(SEQ, 4, "big")
+        body += int.to_bytes(SEQ, 2, "big")
         return body
 
     def create_nACK(self, SEQ):
         body = int.to_bytes(7, 1, "big")
-        body += int.to_bytes(SEQ, 4, "big")
+        body += int.to_bytes(SEQ, 2, "big")
         return body
 
     def create_KeepAlive(self, SEQ):
         body = int.to_bytes(8, 1, "big") #type
-        body += int.to_bytes(SEQ, 4, "big") #seq
+        body += int.to_bytes(SEQ, 2, "big") #seq
         return body
 
     def create_KeepAliveACK(self, SEQ):
         body = int.to_bytes(9, 1, "big") #type
-        body += int.to_bytes(SEQ, 4, "big") #seq
+        body += int.to_bytes(SEQ, 2, "big") #seq
         return body
 
     def create_KeepAliveEND(self, SEQ):
         body = int.to_bytes(10, 1, "big") #type
-        body += int.to_bytes(SEQ, 4, "big") #seq
+        body += int.to_bytes(SEQ, 2, "big") #seq
         return body
 
     def create_FIN(self, SEQ):
         body = int.to_bytes(11, 1, "big") #type
-        body += int.to_bytes(SEQ, 4, "big") #seq
+        body += int.to_bytes(SEQ, 2, "big") #seq
         return body
 
     def get_nameOf_type(self, type):
@@ -131,7 +131,7 @@ class Packet_creator:
         return body[0]
 
     def get_SEQ(self, body):
-        return int.from_bytes(body[1:5], "big")
+        return int.from_bytes(body[1:3], "big")
 
     def ppSEQ(self):
         self.SEQ_num += 1
@@ -195,8 +195,8 @@ class Receiver:
 
     def getDataFromPacket(self, body, decode):
         if decode:
-            return body[5:-2].decode("utf-8")
-        return body[5:-2]
+            return body[3:-2].decode("utf-8")
+        return body[3:-2]
 
 
     def getReceiverInput(self):
@@ -431,6 +431,7 @@ class Receiver:
 
 
 
+
             elif type == 254: #KeepAlive not arrived
                 #print("KeepAlive packet nedorazil")
                 print("\nKomunikácia prerušená!\n")
@@ -549,16 +550,19 @@ class Sender:
             self.corrupted.append(packet_creator.get_SEQ(self.packetsToSend[random.randrange(numOfPackets)]))
         self.corrupted.sort()
 
-
+        if len(self.packetsToSend) < self.window:
+            window = len(self.packetsToSend)
+        else:
+            window = self.window
 
 
         self.arrived_SEQ = packet_creator.get_SEQ(self.packetsToSend[0]) - 1
 
         self.packetsInWindow = []
-        for i in range(self.window):
+        for i in range(window):
             self.packetsInWindow.append(self.packetsToSend[i])
 
-        self.lastIndexInWindow = self.window - 1
+        self.lastIndexInWindow = window - 1
 
 
         #pošlem všetky pakety z okna
@@ -575,8 +579,8 @@ class Sender:
 
     def ask_for_size(self):
         while True:
-            size = int(input("Zadajte počet bajtov pre dáta jedného fragmentu (1-1465): "))
-            if size >= 1 and size <= 1465:
+            size = int(input("Zadajte počet bajtov pre dáta jedného fragmentu (1-1467): "))
+            if size >= 1 and size <= 1467:
                 break
         return size
 
@@ -670,6 +674,7 @@ class Sender:
         self.stop_keepAlive()
         fin_p = packet_creator.create_FIN(packet_creator.ppSEQ())
         packet_creator.sendPacket(fin_p, packet_creator.get_TARGET_addr())
+        #vypnuť WHILE ČAKANIA NA PAKET MORE
 
     def stop_keepAlive(self):
         keepAliveStop_p = packet_creator.create_KeepAliveEND(packet_creator.ppSEQ())
@@ -810,6 +815,7 @@ def thread_waiting_for_input():
             if s == "c": #konec
                 print("Koneeeeec")
                 sender.end_com()
+                exit()
 
             if s == "k": #stop KeepAlive
                 print("KeepAlive stopnute")
