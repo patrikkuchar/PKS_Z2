@@ -498,8 +498,13 @@ class Sender:
             self.send_again_packet(SEQ)
 
     def send_again_packet(self, SEQ):
-        self.send_and_corrupt_packet(self.packetsInWindow[0])
-        threading.Timer(0.5, self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(self.packetsToSend[0]),))
+        #zistím ktorý paket treba znova poslať podľa SEQ
+        for packet in self.packetsToSend:
+            if SEQ == packet_creator.get_SEQ(packet):
+                self.send_and_corrupt_packet(self.packetsInWindow[0])
+                threading.Timer(0.5, self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(self.packetsToSend[0]),))
+                break
+
 
     def move_window(self):
         if self.lastIndexInWindow != len(self.packetsToSend) - 1:
@@ -533,14 +538,6 @@ class Sender:
 
 
     def send_prepared_packets(self):
-        #for i, protocol in enumerate(self.packetsToSend):
-            #if i % 32 == 0:
-                #time.sleep(0.5)
-            #self.send_packet(protocol)
-        #self.packetsToSend = []
-
-        #time.sleep(5)
-        #self.start_keepAlive()
 
         ##corrupt data
         numOfPackets = len(self.packetsToSend)
@@ -842,7 +839,8 @@ def thread_waiting_for_input():
 
 
 
-
+#C:/PKS_na_poslanie/test.png
+#C:/PKS_vystup
 
 
 
