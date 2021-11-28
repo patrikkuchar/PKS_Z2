@@ -709,7 +709,7 @@ class Sender:
         packet_creator.set_enabled_KeepAlive(True)
         #self.enabled_keepAlive = True
         self.keepAlive_arrived = True
-        threading.Timer(0.5, self.exceeded_waiting_for_keepAlive, args=(0, )).start()
+        threading.Timer(0.5, self.exceeded_waiting_for_keepAlive, args=(self.arrived_SEQ, )).start()
         while packet_creator.enabled_KeepAlive():
             #threading.Thread(target=self.waiting_for_keepAlive_packet).start()
             time.sleep(5)
@@ -847,8 +847,8 @@ def thread_waiting_for_input():
 
 
 showKeepAlivePackets = False
-showSentPackets = False
-showReceivedPackets = False
+showSentPackets = True
+showReceivedPackets = True
 
 MY_PORT = int(input("Zadajte port, na ktorom očakávate komunikáciu: "))
 
