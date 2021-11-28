@@ -501,8 +501,8 @@ class Sender:
         #zistím ktorý paket treba znova poslať podľa SEQ
         for packet in self.packetsToSend:
             if SEQ == packet_creator.get_SEQ(packet):
-                self.send_and_corrupt_packet(self.packetsInWindow[0])
-                threading.Timer(0.5, self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(self.packetsToSend[0]),))
+                self.send_and_corrupt_packet(packet)
+                threading.Timer(0.5, self.exceeded_waiting_for_ACK, args=(SEQ,))
                 break
 
 
