@@ -124,11 +124,10 @@ class Packet_creator:
         body += data
         return self.generateCRC(body)
 
-    def create_PSH_F(self, SEQ, data):
+    def create_PSH_F(self, SEQ):
         body = int.to_bytes(3, 1, "big") #type
         body += int.to_bytes(SEQ, 2, "big") #seq
-        body += data
-        return self.generateCRC(body)
+        return body
 
     def create_MSG(self, SEQ, message):
         body = int.to_bytes(4, 1, "big") #type
@@ -136,11 +135,10 @@ class Packet_creator:
         body += bytes(message, "utf-8")
         return self.generateCRC(body)
 
-    def create_MSG_F(self, SEQ, message):
+    def create_MSG_F(self, SEQ):
         body = int.to_bytes(5, 1, "big") #type
         body += int.to_bytes(SEQ, 2, "big") #seq
-        body += bytes(message, "utf-8")
-        return self.generateCRC(body)
+        return body
 
     def create_ACK(self, SEQ):
         body = int.to_bytes(6, 1, "big")
@@ -326,7 +324,7 @@ class Receiver:
         #time.sleep(0.5)
         time.sleep(packet_creator.get_timeForPacket())
 
-        if SEQ != self.arrived_SEQ:
+        if SEQ >= self.arrived_SEQ:
             print("SEQ: " + str(SEQ))
             print("arrived: " + str(self.arrived_SEQ))
             print("Spojenie prerušené v dôsledku neprijatia paketu do " + str(packet_creator.get_timeForPacket()) + "s")
@@ -376,23 +374,25 @@ class Receiver:
                 self.keepAlive_arrived = False
                 threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(0, )).start()
 
-            if type >= 1 and type <= 5:
+            self.arrived_SEQ = SEQ
 
-                self.arrived_SEQ = SEQ
+            if type == 1 or type == 2 or type == 4:
+
+                threading.Thread(target=self.exceeded_waiting_for_packet, args=(SEQ,)).start()
 
                 if packet_creator.checkCRC(data):
                     ack_P = packet_creator.create_ACK(SEQ)
                     self.send_packet(ack_P, addr)
 
-                    if type != 3 or type != 5:
-                        threading.Thread(target=self.exceeded_waiting_for_packet, args=(SEQ,)).start()
 
                     if type == 1:  # INF
                         if len(self.path) == 0:
+                            self.arrived_SEQ = SEQ
                             self.start_time_recvFile = time.time()
                             self.path.append(data)
                         else:
                             self.path = self.insertData(self.path, data)
+                            self.arrived_SEQ += 1
 
                         # self.path = self.decodeData(data)
                         # "Paket cesty dorazil")
@@ -407,45 +407,37 @@ class Receiver:
                         else:
                             self.file = self.insertData(self.file, data)
 
+                        self.arrived_SEQ += 1
+
                         #self.file += self.getDataFromPacket(data, False)
 
-                    elif type == 3:  # PSH_F
-                        # print("Posledný paket dorazil")
-                        # print(packet_creator.checkCRC(data))
-                        if len(self.file) == 0:
-                            self.file.append(data)
-                        else:
-                            self.file = self.insertData(self.file, data)
-                        #self.file += self.getDataFromPacket(data, False)
-                        self.saveData()
 
                     elif type == 4:  # sprava
                         # print("Paket dorazil")
                         # crc kontrola
                         if len(self.message) == 0:
+                            self.arrived_SEQ = SEQ
                             self.message.append(data)
                         else:
                             self.message = self.insertData(self.message, data)
+                            self.arrived_SEQ += 1
                         #self.message += self.getDataFromPacket(data, True)
 
-                    elif type == 5:  # sprava_F
-                        # print("Posledny paket dorazil")
-                        # crc kontrola
-                        if len(self.message) == 0:
-                            self.message.append(data)
-                        else:
-                            self.message = self.insertData(self.message, data)
-                        #self.message += self.getDataFromPacket(data, True)
-                        print(">> ", end="")
-                        for part in self.message:
-                            print(self.getDataFromPacket(part, True), end="")
-                        print()
-
-                        self.message = []
                 else:
+                    self.arrived_SEQ += 1
                     nack_p = packet_creator.create_nACK(SEQ)
                     self.send_packet(nack_p, addr)
 
+            elif type == 3: #PSH_F
+                self.saveData()
+
+            elif type == 5: #MSG_F
+                print(">> ", end="")
+                for part in self.message:
+                    print(self.getDataFromPacket(part, True), end="")
+                print()
+
+                self.message = []
 
 
             elif type == 6: #ACK
@@ -582,12 +574,18 @@ class Sender:
 
         if len(self.packetsInWindow) == 0: ##všetky pakety odoslané
             if packet_creator.get_type(self.packetsToSend[-1]) == 3: #PSH_F
+                psh_f = packet_creator.create_PSH_F(packet_creator.ppSEQ())
+                self.send_packet(psh_f)
+
                 end_time_sendFile = time.time()
                 print("Súbor úspešne odoslaný")
                 print("Cesta k súboru na uzle prijímača: '" + self.add_filename() + "'")
                 print("Čas odoslania: " + str(round(end_time_sendFile - self.start_time_sendFile, 4)) + "s")
 
             else:
+                msg_f = packet_creator.create_MSG_F(packet_creator.ppSEQ())
+                self.send_packet(msg_f)
+
                 print("Správa úspešne odoslaná")
 
 
@@ -670,11 +668,9 @@ class Sender:
 
         array_of_data = self.split_data(message, size)
 
-        for one_data in array_of_data[:-1]:
+        for one_data in array_of_data:
             self.packetsToSend.append(packet_creator.create_MSG(packet_creator.ppSEQ(), one_data))
             #výpočet CRC
-        self.packetsToSend.append(packet_creator.create_MSG_F(packet_creator.ppSEQ(), array_of_data[-1]))
-        #výpočet CRC
 
         #corruption of data
         #self.packetsToSend[-1] = packet_creator.corruptData(self.packetsToSend[-1])
@@ -726,11 +722,9 @@ class Sender:
 
         ## príprava súboru
         array_of_data = self.split_data(read, size)
-        for one_data in array_of_data[:-1]:
+        for one_data in array_of_data:
             self.packetsToSend.append(packet_creator.create_PSH(packet_creator.ppSEQ(), one_data))
             # výpočet CRC
-        self.packetsToSend.append(packet_creator.create_PSH_F(packet_creator.ppSEQ(), array_of_data[-1]))
-        # výpočet CRC
 
         print("Odošle sa " + str(len(self.packetsToSend)) + " paketov o veľkosti " + str(len(read)) + "B. ")
         self.start_time_sendFile = time.time()
