@@ -297,7 +297,7 @@ class Receiver:
         #self.sock.sendto(body, addr)
 
     def restart_listening(self):
-        self.cancel_waiting(0)
+        self.cancel_waiting(1)
         self.synchronized = True
         self.waiting_for_packet()
 
