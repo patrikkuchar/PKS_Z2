@@ -328,6 +328,7 @@ class Receiver:
             print("SEQ: " + str(SEQ))
             print("arrived: " + str(self.arrived_SEQ))
             print("Spojenie prerušené v dôsledku neprijatia paketu do " + str(packet_creator.get_timeForPacket()) + "s")
+            self.cancel_waiting()
             exit()
 
 
@@ -487,6 +488,9 @@ class Receiver:
                 #print("KeepAlive packet nedorazil")
                 print("\nKomunikácia prerušená! - kvôli keeepalive\n")
                 break
+
+            elif type == 255:
+                print("\nKomunikácia prerušená! - kvôli neaktivite\n")
 
 
 
