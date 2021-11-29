@@ -415,8 +415,8 @@ class Receiver:
                     elif type == 4:  # sprava
                         # print("Paket dorazil")
                         # crc kontrola
-                        if len(self.message) > 4:
-                            time.sleep(20)
+                        if len(self.message) >= 4:
+                            time.sleep(60)
 
 
                         if len(self.message) == 0:
