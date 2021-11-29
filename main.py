@@ -805,9 +805,10 @@ class Sender:
         threading.Thread(target=self.thread_keepAlive, name="t1").start()
 
     def exceeded_waiting_for_keepAlive(self, ex_SEQ):
+        ex_SEQ -= packet_creator.get_thresholdKA()
         while packet_creator.enabled_KeepAlive():
             #time.sleep(5.1)
-            time.sleep((packet_creator.get_timeForKA() + 0.1) * packet_creator.get_thresholdKA())
+            time.sleep(packet_creator.get_timeForKA() + 0.1)
 
             if ex_SEQ >= self.arrived_SEQ and packet_creator.enabled_KeepAlive():
                 self.keepAlive_arrived = False
