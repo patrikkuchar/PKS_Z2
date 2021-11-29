@@ -606,18 +606,18 @@ class Sender:
         self.corrupted.sort()
 
         if len(self.packetsToSend) < self.window:
-            window = len(self.packetsToSend)
+            win = len(self.packetsToSend)
         else:
-            window = self.window
+            win = self.window
 
 
         self.arrived_SEQ = packet_creator.get_SEQ(self.packetsToSend[0]) - 1
 
         self.packetsInWindow = []
-        for i in range(window):
+        for i in range(win):
             self.packetsInWindow.append(self.packetsToSend[i])
 
-        self.lastIndexInWindow = window - 1
+        self.lastIndexInWindow = win - 1
 
 
         #pošlem všetky pakety z okna
