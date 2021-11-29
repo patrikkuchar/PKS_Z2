@@ -35,15 +35,14 @@ class Packet_creator:
         print(" Koľko paketov sa má poškodiť pred odoslaním: " + str(round(self.prcOfCorrupted * 100, 2)) + "%")
 
         value = file.readline().split(';')[1]
-        showKeepAlivePackets = value == "1"
+        showKeepAlivePackets = value[0] == "1"
         if showKeepAlivePackets:
             print(" Ukázať KeepAlive pakety: Áno")
         else:
             print(" Ukázať KeepAlive pakety: Nie")
 
-
         value = file.readline().split(';')[1]
-        showReceivedPackets = value == "1"
+        showReceivedPackets = value[0] == "1"
         if showReceivedPackets:
             print(" Ukázať prichádzajúce pakety: Áno")
         else:
@@ -51,7 +50,7 @@ class Packet_creator:
 
 
         value = file.readline().split(';')[1]
-        showSentPackets = value == "1"
+        showSentPackets = value[0] == "1"
         if showSentPackets:
             print(" Ukázať odosielajúce pakety: Áno\n")
         else:
@@ -369,7 +368,7 @@ class Receiver:
                 print("IP adresa odosielateľa: " + addr[0])
                 print("Port odosielateľa: " + str(addr[1]) + "\n\n")
 
-                print("Ako si prajete pokračovať:\na) Poslať správu\nb) Poslať súbor\nc) Ukončiť komunikáciu\n")
+                print("Ako si prajete pokračovať:\n 'm' - Poslať správu\n 'f' - Poslať súbor\n 'r' - Znova načítať súbor 'config.txt' - načítať zmenu nastavení\n 'e' - Ukončiť komunikáciu\n")
 
                 packet_creator.changeInputMode(1) #poslanie suboru
 
