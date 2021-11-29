@@ -11,6 +11,62 @@ class Packet_creator:
         self.prcOfCorrupted = 0.1
         self.crc_func = crcmod.mkCrcFun(0x10211, rev=False, initCrc=0x1d0f, xorOut=0x0000)
 
+    def refresh_configFile(self):
+        global showSentPackets, showReceivedPackets, showKeepAlivePackets
+
+        file = open("config.txt", "r")
+
+        print("Aktuálne nastavenie zo súboru 'config.txt':")
+
+        self.timeForPacket = float(file.readline().split(';')[1])
+        print(" Maximálny čas čakania na potvrdzujúci paket: " + str(self.timeForPacket) + "s")
+
+        self.timeForKeepAlive = float(file.readline().split(';')[1])
+        print(" Interval odosielania KeepAlive: " + str(self.timeForKeepAlive) + "s")
+
+        self.thresholdKA = int(file.readline().split(';')[1])
+        print(" Threshold KeepAlive: " + str(self.thresholdKA))
+
+        window = file.readline().split(';')[1]
+        sender.set_window(int(window))
+        print(" Window: " + window)
+
+        self.prcOfCorrupted = float(file.readline().split(';')[1])
+        print(" Koľko paketov sa má poškodiť pred odoslaním: " + str(round(self.prcOfCorrupted * 100, 2)) + "%")
+
+        value = file.readline().split(';')[1]
+        showKeepAlivePackets = value == "1"
+        if showKeepAlivePackets:
+            print(" Ukázať KeepAlive pakety: Áno")
+        else:
+            print(" Ukázať KeepAlive pakety: Nie")
+
+
+        value = file.readline().split(';')[1]
+        showReceivedPackets = value == "1"
+        if showReceivedPackets:
+            print(" Ukázať prichádzajúce pakety: Áno")
+        else:
+            print(" Ukázať prichádzajúce pakety: Nie")
+
+
+        value = file.readline().split(';')[1]
+        showSentPackets = value == "1"
+        if showSentPackets:
+            print(" Ukázať odosielajúce pakety: Áno\n")
+        else:
+            print(" Ukázať odosielajúce pakety: Nie\n")
+
+        file.close()
+
+    def get_timeForPacket(self):
+        return self.timeForPacket
+    def get_timeForKA(self):
+        return self.timeForKeepAlive
+    def get_thresholdKA(self):
+        return self.thresholdKA
+
+
     def get_prcOfCorrupted(self):
         return self.prcOfCorrupted
 
@@ -149,7 +205,7 @@ class Packet_creator:
     def sendPacket(self, body, addr):
         if showSentPackets:
             type = self.get_type(body)
-            if type < 13:
+            if type < 13 and (((type == 8 or type == 9) and showKeepAlivePackets) or not (type == 8 or type == 9)):
                 print("<- " + self.get_nameOf_type(type) + " - SEQ: " + str(self.get_SEQ(body)))
         self.sck.sendto(body, addr)
 
@@ -167,7 +223,7 @@ class Receiver:
         self.MY_IP = socket.gethostbyname(hostname)
         # print(local_ip)
 
-        #self.MY_IP = "127.0.0.1"
+        self.MY_IP = "127.0.0.1"
         #self.MY_IP = "192.168.0.166"
         self.MY_PORT = port
 
@@ -234,7 +290,7 @@ class Receiver:
         print("Veľkosť súboru: " + str(len(file)) + "B")
         print("Počet fragmentov: " + str(len(self.path) + len(self.file)))
         print("Počet dát v jednom fragmente: " + str(len(self.file[0]) - 7))
-        print("Čas prenosu súboru: " + str(round((end_time_recvFile - self.start_time_recvFile) / 1000, 4)) + "s")
+        print("Čas prenosu súboru: " + str(round(end_time_recvFile - self.start_time_recvFile, 4)) + "s")
         print("Cesta k súboru: '" + path + "'")
 
 
@@ -263,17 +319,19 @@ class Receiver:
 
     def exceeded_waiting_for_keepAlive(self, SEQ):
 
-        time.sleep(5.1)
+        #time.sleep(5.1)
+        time.sleep((packet_creator.get_timeForKA() + 0.1) * packet_creator.get_thresholdKA())
 
         if SEQ >= self.arrived_SEQ and packet_creator.enabled_KeepAlive():
             self.cancel_keepAlive_waiting()
 
     def exceeded_waiting_for_packet(self, SEQ):
 
-        time.sleep(0.5)
+        #time.sleep(0.5)
+        time.sleep(packet_creator.get_timeForPacket())
 
         if SEQ >= self.arrived_SEQ:
-            print("SPOJENE PRERUŠENO MORE")
+            print("Spojenie prerušené v dôsledku neprijatia paketu do " + str(packet_creator.get_timeForPacket()) + "s")
             exit()
 
 
@@ -291,7 +349,7 @@ class Receiver:
 
             packet_creator.setSEQ_num(SEQ)
 
-            if showReceivedPackets and type < 13:
+            if showReceivedPackets and type < 13 and (((type == 8 or type == 9) and showKeepAlivePackets) or not (type == 8 or type == 9)):
                 print("-> " + packet_creator.get_nameOf_type(type), " - SEQ: " + str(SEQ))
 
             if type == 0: #SYN
@@ -403,9 +461,6 @@ class Receiver:
                 packet_creator.set_enabled_KeepAlive(True)
                 #self.enabled_keepAlive = True
 
-                if showKeepAlivePackets:
-                    print("KeepAlive packet prijatý")
-
 
                 self.arrived_SEQ = SEQ
 
@@ -420,12 +475,12 @@ class Receiver:
                 sender.pp_arrived_SEQ()
 
             elif type == 10: #keepAlive stop
-                print("Žiadosť o stopnutie keepAlive prijatá")
                 packet_creator.set_enabled_KeepAlive(False)
                 #self.enabled_keepAlive = False
 
             elif type == 11: #FIN
                 print("Komunikácia úspešne ukončená")
+                break
 
 
 
@@ -471,6 +526,8 @@ class Sender:
 
         self.packetsToSend = []
 
+    def set_window(self, value):
+        self.window = value
 
     def set_local_path(self, path):
         self.local_path = path
@@ -494,15 +551,18 @@ class Sender:
             self.send_packet(body)
 
     def exceeded_waiting_for_ACK(self, SEQ):
+        time.sleep(packet_creator.get_timeForPacket())
+
         if SEQ > self.arrived_SEQ: ##nedošiel packet
             self.send_again_packet(SEQ)
 
     def send_again_packet(self, SEQ):
         #zistím ktorý paket treba znova poslať podľa SEQ
+        
         for packet in self.packetsToSend:
             if SEQ == packet_creator.get_SEQ(packet):
                 self.send_and_corrupt_packet(packet)
-                threading.Timer(0.5, self.exceeded_waiting_for_ACK, args=(SEQ,))
+                threading.Thread(target=self.exceeded_waiting_for_ACK, args=(SEQ,)).start()
                 break
 
 
@@ -512,7 +572,7 @@ class Sender:
             self.packetsInWindow.append(self.packetsToSend[self.lastIndexInWindow])
 
             self.send_and_corrupt_packet(self.packetsInWindow[-1])
-            threading.Timer(0.5, self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(self.packetsToSend[-1]),))
+            threading.Thread(target=self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(self.packetsToSend[-1]),)).start()
 
         self.packetsInWindow.pop(0)
 
@@ -521,16 +581,17 @@ class Sender:
                 end_time_sendFile = time.time()
                 print("Súbor úspešne odoslaný")
                 print("Cesta k súboru na uzle prijímača: '" + self.add_filename() + "'")
-                print("Čas odoslania: " + str(round((end_time_sendFile - self.start_time_sendFile) / 1000, 4)) + "s")
+                print("Čas odoslania: " + str(round(end_time_sendFile - self.start_time_sendFile, 4)) + "s")
 
             else:
                 print("Správa úspešne odoslaná")
 
 
 
-            packet_creator.changeInputMode(1)
+            packet_creator.changeInputMode(-1)
             self.packetsToSend = []
-            time.sleep(5)
+            time.sleep(packet_creator.get_timeForKA())
+            packet_creator.changeInputMode(1)
             self.start_keepAlive()
 
 
@@ -565,9 +626,9 @@ class Sender:
         #pošlem všetky pakety z okna
         for i, protocol in enumerate(self.packetsInWindow):
             if i % 32 == 0:
-                time.sleep(0.5)
+                time.sleep(0.3)
             self.send_and_corrupt_packet(protocol)
-            threading.Timer(0.5, self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(protocol),))
+            threading.Thread(target=self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(protocol),)).start()
 
 
 
@@ -683,12 +744,12 @@ class Sender:
         self.arrived_SEQ = packet_creator.getSEQ_num()
         packet_creator.set_enabled_KeepAlive(True)
         #self.enabled_keepAlive = True
-        print("start_KEEEPALIV")
         threading.Thread(target=self.thread_keepAlive, name="t1").start()
 
     def exceeded_waiting_for_keepAlive(self, ex_SEQ):
         while packet_creator.enabled_KeepAlive():
-            time.sleep(5.1)
+            #time.sleep(5.1)
+            time.sleep((packet_creator.get_timeForKA() + 0.1) * packet_creator.get_thresholdKA())
 
             if ex_SEQ >= self.arrived_SEQ and packet_creator.enabled_KeepAlive():
                 self.keepAlive_arrived = False
@@ -709,10 +770,8 @@ class Sender:
         threading.Timer(0.5, self.exceeded_waiting_for_keepAlive, args=(self.arrived_SEQ, )).start()
         while packet_creator.enabled_KeepAlive():
             #threading.Thread(target=self.waiting_for_keepAlive_packet).start()
-            time.sleep(5)
+            time.sleep(packet_creator.get_timeForKA())
             if packet_creator.enabled_KeepAlive():
-                if showKeepAlivePackets:
-                    print("KeepAlive packet poslaný")
                 self.send_packet(packet_creator.create_KeepAlive(packet_creator.ppSEQ()))
 
             if not self.keepAlive_arrived and packet_creator.enabled_KeepAlive():
@@ -740,7 +799,7 @@ class Sender:
             print("IP adresa prijímateľa: " + addr[0])
             print("Port prijímateľa: " + str(addr[1]) + "\n\n")
 
-            print("Ako si prajete pokračovať:\na) Poslať správu\nb) Poslať súbor\nc) Ukončiť komunikáciu\n")
+            print("Ako si prajete pokračovať:\n 'm' - Poslať správu\n 'f' - Poslať súbor\n 'r' - Znova načítať súbor 'config.txt' - načítať zmenu nastavení\n 'e' - Ukončiť komunikáciu\n")
 
             packet_creator.changeInputMode(1) #poslanie suboru
 
@@ -749,8 +808,6 @@ class Sender:
         elif type == 7: #nACK
             print("\n\nKomunikáciu sa nepodarilo nadviazať!\n\nPrajete si znova začať komunikáciu ? (y/n) ", end="")
             return False
-        else:
-            print("Neznam co še pohubilo")
 
 
 
@@ -801,18 +858,25 @@ def thread_waiting_for_input():
 
         elif inputMode == 1: #poslat subor
 
-            if s == "a": #sprava
+            if s == "m": #sprava
                 print("Zadajte správu: ", end="")
                 inputMode = 2
 
-            if s == "b": #subor
+            if s == "f": #subor
                 print("Zadajte absolútnu cestu k súboru: ", end="")
                 inputMode = 3
 
-            if s == "c": #konec
+            if s == "e": #konec
                 print("Koneeeeec")
                 sender.end_com()
                 exit()
+
+            if s == "r": #refresh file
+                print("Súbor 'config.txt' sa znova načítal\n")
+                sender.stop_keepAlive()
+                time.sleep(0.5)
+                packet_creator.refresh_configFile()
+                sender.start_keepAlive()
 
             if s == "k": #stop KeepAlive
                 print("KeepAlive stopnute")
@@ -853,6 +917,7 @@ MY_PORT = int(input("Zadajte port, na ktorom očakávate komunikáciu: "))
 packet_creator = Packet_creator()
 receiver = Receiver(MY_PORT)#rcv.Receiver(MY_PORT)
 sender = Sender()#snd.Sender()
+packet_creator.refresh_configFile()
 
 inputMode = 0
 
