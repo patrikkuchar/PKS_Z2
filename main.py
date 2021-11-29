@@ -328,11 +328,9 @@ class Receiver:
 
     def exceeded_waiting_for_packet(self, SEQ):
         #time.sleep(0.5)
+        SEQ += 1
         time.sleep(packet_creator.get_timeForPacket())
 
-        print("tu som došol")
-        print("SEQ - " + str(SEQ))
-        print("arrived - " + str(self.arrived_SEQ))
         if SEQ >= self.arrived_SEQ:
             i = 0
             while i < packet_creator.get_thresholdKA() - 1:
@@ -342,7 +340,7 @@ class Receiver:
                 if not (SEQ >= self.arrived_SEQ):
                     break
 
-            if i == packet_creator.get_thresholdKA():
+            if i == packet_creator.get_thresholdKA() - 1:
                 print("Spojenie prerušené v dôsledku " + str(packet_creator.get_thresholdKA()) + "x neprijatia paketu.")
                 self.stop_waiting()
                 exit()
@@ -394,7 +392,7 @@ class Receiver:
 
             if type == 1 or type == 2 or type == 4:
 
-                threading.Thread(target=self.exceeded_waiting_for_packet, args=(SEQ,)).start()
+                threading.Thread(target=self.exceeded_waiting_for_packet, args=(self.arrived_SEQ,)).start()
 
                 if packet_creator.checkCRC(data):
                     ack_P = packet_creator.create_ACK(SEQ)
