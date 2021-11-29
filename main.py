@@ -328,7 +328,7 @@ class Receiver:
             print("SEQ: " + str(SEQ))
             print("arrived: " + str(self.arrived_SEQ))
             print("Spojenie prerušené v dôsledku neprijatia paketu do " + str(packet_creator.get_timeForPacket()) + "s")
-            self.cancel_waiting()
+            #self.cancel_waiting()
             exit()
 
 
@@ -375,7 +375,6 @@ class Receiver:
                 self.keepAlive_arrived = False
                 threading.Thread(target=self.exceeded_waiting_for_keepAlive, args=(0, )).start()
 
-            self.arrived_SEQ = SEQ
 
             if type == 1 or type == 2 or type == 4:
 
@@ -416,6 +415,10 @@ class Receiver:
                     elif type == 4:  # sprava
                         # print("Paket dorazil")
                         # crc kontrola
+                        if len(self.message) > 4:
+                            time.sleep(20)
+
+
                         if len(self.message) == 0:
                             self.arrived_SEQ = SEQ
                             self.message.append(data)
@@ -444,13 +447,13 @@ class Receiver:
             elif type == 6: #ACK
                 if not sender.sentFirtsPackets:
                     time.sleep(0.1)
-                sender.set_arrived_SEQ(SEQ)
+                sender.pp_arrived_SEQ()
                 sender.move_window()
 
             elif type == 7: #nACK
                 if not sender.sentFirtsPackets:
                     time.sleep(0.1)
-                sender.set_arrived_SEQ(SEQ)
+                sender.pp_arrived_SEQ()
                 sender.send_again_packet(SEQ)
 
 
@@ -478,7 +481,6 @@ class Receiver:
             elif type == 11: #FIN
                 print("Komunikácia úspešne ukončená")
                 break
-
 
 
 
@@ -550,11 +552,11 @@ class Sender:
         else:
             self.send_packet(body)
 
-    #def exceeded_waiting_for_ACK(self, SEQ):
-        #time.sleep(packet_creator.get_timeForPacket())
+    def exceeded_waiting_for_ACK(self, SEQ):
+        time.sleep(packet_creator.get_timeForPacket())
 
-        #if SEQ > self.arrived_SEQ: ##nedošiel packet
-            #self.send_again_packet(SEQ)
+        if SEQ >= self.arrived_SEQ: ##nedošiel packet
+            self.send_again_packet(SEQ)
 
     def send_again_packet(self, SEQ):
         #zistím ktorý paket treba znova poslať podľa SEQ
@@ -562,7 +564,7 @@ class Sender:
         for packet in self.packetsToSend:
             if SEQ == packet_creator.get_SEQ(packet):
                 self.send_and_corrupt_packet(packet)
-                #threading.Thread(target=self.exceeded_waiting_for_ACK, args=(SEQ,)).start()
+                threading.Thread(target=self.exceeded_waiting_for_ACK, args=(SEQ,)).start()
                 break
 
 
@@ -572,7 +574,7 @@ class Sender:
             self.packetsInWindow.append(self.packetsToSend[self.lastIndexInWindow])
 
             self.send_and_corrupt_packet(self.packetsInWindow[-1])
-            #threading.Thread(target=self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(self.packetsToSend[-1]),)).start()
+            threading.Thread(target=self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(self.packetsToSend[-1]),)).start()
 
         self.packetsInWindow.pop(0)
 
@@ -623,7 +625,7 @@ class Sender:
         print(self.corrupted)
         print("VEĽKOSŤ OKNA JE - " + str(win))
 
-        self.arrived_SEQ = packet_creator.get_SEQ(self.packetsToSend[0]) - 1
+        self.arrived_SEQ = packet_creator.get_SEQ(self.packetsToSend[0])
 
         self.packetsInWindow = []
 
@@ -640,11 +642,10 @@ class Sender:
             if i % 32 == 0:
                 time.sleep(0.2)
             self.send_and_corrupt_packet(protocol)
-            #threading.Thread(target=self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(protocol),)).start()
+            threading.Thread(target=self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(protocol),)).start()
 
 
         self.sentFirtsPackets = True
-
 
 
 
@@ -769,8 +770,6 @@ class Sender:
     def pp_arrived_SEQ(self):
         self.arrived_SEQ += 1
 
-    def set_arrived_SEQ(self, value):
-        self.arrived_SEQ = value
 
     def thread_keepAlive(self):
         packet_creator.set_enabled_KeepAlive(True)
