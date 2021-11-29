@@ -928,7 +928,6 @@ def thread_waiting_for_input():
 
             if s == "e": #konec
                 sender.end_com()
-                receiver.cancel_waiting(1)
                 print("Komunikácia úspešne ukončená")
                 break
 
