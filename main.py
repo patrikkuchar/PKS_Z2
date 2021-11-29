@@ -29,7 +29,7 @@ class Packet_creator:
 
         window = file.readline().split(';')[1]
         sender.set_window(int(window))
-        print(" Window: " + window)
+        print(" Window: " + window[:-1])
 
         self.prcOfCorrupted = float(file.readline().split(';')[1])
         print(" Koľko paketov sa má poškodiť pred odoslaním: " + str(round(self.prcOfCorrupted * 100, 2)) + "%")
