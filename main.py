@@ -330,11 +330,13 @@ class Receiver:
         #time.sleep(0.5)
         time.sleep(packet_creator.get_timeForPacket())
 
+        print("tu som došol")
         if SEQ >= self.arrived_SEQ:
             i = 0
             while i < packet_creator.get_thresholdKA() - 1:
                 time.sleep(packet_creator.get_timeForPacket())
                 i += 1
+                print(i)
                 if not (SEQ >= self.arrived_SEQ):
                     break
 
@@ -427,7 +429,7 @@ class Receiver:
                     elif type == 4:  # sprava
                         # print("Paket dorazil")
                         # crc kontrola
-                        if len(self.message) > 4:
+                        if len(self.message) == 4:
                             time.sleep(20)
 
 
@@ -591,9 +593,8 @@ class Sender:
                         break
 
                 if equal:
-                    print("Spojenie prerušené v dôsledku " + str(
-                        packet_creator.get_thresholdKA()) + "x neprijatia paketu do " + str(
-                        packet_creator.get_timeForPacket()) + "s")
+                    self.thresholdForPackets = []
+                    print("Spojenie prerušené v dôsledku " + str(packet_creator.get_thresholdKA()) + "x neprijatia paketu do " + str(packet_creator.get_timeForPacket()) + "s")
                     receiver.stop_waiting()
 
                 else:
@@ -609,7 +610,7 @@ class Sender:
         for packet in self.packetsToSend:
             if SEQ == packet_creator.get_SEQ(packet):
                 self.send_and_corrupt_packet(packet)
-                threading.Thread(target=self.exceeded_waiting_for_ACK, args=(SEQ,)).start()
+                threading.Thread(target=self.exceeded_waiting_for_ACK, args=(self.arrived_SEQ,)).start()
                 break
 
 
@@ -619,7 +620,7 @@ class Sender:
             self.packetsInWindow.append(self.packetsToSend[self.lastIndexInWindow])
 
             self.send_and_corrupt_packet(self.packetsInWindow[-1])
-            threading.Thread(target=self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(self.packetsToSend[-1]),)).start()
+            threading.Thread(target=self.exceeded_waiting_for_ACK, args=(self.arrived_SEQ,)).start()
 
         self.packetsInWindow.pop(0)
 
@@ -672,7 +673,7 @@ class Sender:
         print(self.corrupted)
         print("VEĽKOSŤ OKNA JE - " + str(win))
 
-        self.arrived_SEQ = packet_creator.get_SEQ(self.packetsToSend[0])
+        self.arrived_SEQ = packet_creator.get_SEQ(self.packetsToSend[0]) + (win - 1)
 
         self.packetsInWindow = []
 
@@ -689,7 +690,7 @@ class Sender:
             if i % 32 == 0:
                 time.sleep(0.2)
             self.send_and_corrupt_packet(protocol)
-            threading.Thread(target=self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(protocol),)).start()
+            threading.Thread(target=self.exceeded_waiting_for_ACK, args=(self.arrived_SEQ,)).start()
 
 
         self.sentFirtsPackets = True
