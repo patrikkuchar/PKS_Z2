@@ -431,8 +431,8 @@ class Receiver:
                     elif type == 4:  # sprava
                         # print("Paket dorazil")
                         # crc kontrola
-                        if len(self.message) == 4:
-                            time.sleep(20)
+                        #if len(self.message) == 4:
+                            #time.sleep(20)
 
 
                         if len(self.message) == 0:
@@ -627,6 +627,8 @@ class Sender:
         self.packetsInWindow.pop(0)
 
         if len(self.packetsInWindow) == 0: ##všetky pakety odoslané
+            time.sleep(60)
+
             if packet_creator.get_type(self.packetsToSend[-1]) == 3: #PSH_F
                 psh_f = packet_creator.create_PSH_F(packet_creator.ppSEQ())
                 self.send_packet(psh_f)
