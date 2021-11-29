@@ -331,6 +331,8 @@ class Receiver:
         time.sleep(packet_creator.get_timeForPacket())
 
         print("tu som došol")
+        print("SEQ - " + str(SEQ))
+        print("arrived - " + str(self.arrived_SEQ))
         if SEQ >= self.arrived_SEQ:
             i = 0
             while i < packet_creator.get_thresholdKA() - 1:
