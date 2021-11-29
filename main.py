@@ -297,28 +297,19 @@ class Receiver:
         #self.sock.sendto(body, addr)
 
     def restart_listening(self):
-        self.cancel_waiting(0)
+        self.cancel_waiting()
         self.synchronized = True
         self.waiting_for_packet()
 
-    def stop_waiting(self):
-        self.activeClass = False
-        packet_creator.sendPacket(int.to_bytes(255, 1, "big"), packet_creator.get_MY_addr())
-
-    def cancel_waiting(self, type):
+    def cancel_waiting(self):
         self.activeClass = False
         #packet_creator.sendPacket(int.to_bytes(255, 1, "big"), packet_creator.get_MY_addr())
-        if type == 0:
-            packet_creator.sendPacket(int.to_bytes(253, 1, "big"), packet_creator.get_MY_addr())
-        if type == 1:
-            self.sock.sendto(int.to_bytes(253, 1, "big"), (self.MY_IP, self.MY_PORT))
+        packet_creator.sendPacket(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
         #self.sock.sendto(int.to_bytes(255, 1, "big"), (self.MY_IP, self.MY_PORT))
 
     def cancel_keepAlive_waiting(self):
         #packet_creator.sendPacket(int.to_bytes(254, 1, "big"), packet_creator.get_MY_addr())
-
-        print("\nKomunikácia prerušená! - po " + str(packet_creator.get_thresholdKA()) + " neprijatých KeepAlive paketoch\n")
-        self.stop_waiting()
+        packet_creator.sendPacket(int.to_bytes(254, 1, "big"), (self.MY_IP, self.MY_PORT))
         #self.sock.sendto(int.to_bytes(254, 1, "big"), (self.MY_IP, self.MY_PORT))
 
     def exceeded_waiting_for_keepAlive(self, SEQ):
@@ -334,18 +325,11 @@ class Receiver:
         time.sleep(packet_creator.get_timeForPacket())
 
         if SEQ >= self.arrived_SEQ:
-            i = 0
-            while i < packet_creator.get_thresholdKA() - 1:
-                time.sleep(packet_creator.get_timeForPacket())
-                i += 1
-                if not (SEQ >= self.arrived_SEQ):
-                    break
-
-            if i == packet_creator.get_thresholdKA():
-                print("Spojenie prerušené v dôsledku " + str(packet_creator.get_thresholdKA()) + "x neprijatia paketu.")
-                self.stop_waiting()
-                exit()
-
+            print("SEQ: " + str(SEQ))
+            print("arrived: " + str(self.arrived_SEQ))
+            print("Spojenie prerušené v dôsledku neprijatia paketu do " + str(packet_creator.get_timeForPacket()) + "s")
+            #self.cancel_waiting()
+            exit()
 
 
     def waiting_for_packet(self):
@@ -431,6 +415,9 @@ class Receiver:
                     elif type == 4:  # sprava
                         # print("Paket dorazil")
                         # crc kontrola
+                        if len(self.message) > 4:
+                            time.sleep(20)
+
 
                         if len(self.message) == 0:
                             self.arrived_SEQ = SEQ
@@ -446,11 +433,9 @@ class Receiver:
                     self.send_packet(nack_p, addr)
 
             elif type == 3: #PSH_F
-                self.arrived_SEQ += 10
                 self.saveData()
 
             elif type == 5: #MSG_F
-                self.arrived_SEQ += 10
                 print(">> ", end="")
                 for part in self.message:
                     print(self.getDataFromPacket(part, True), end="")
@@ -495,12 +480,10 @@ class Receiver:
 
             elif type == 11: #FIN
                 print("Komunikácia úspešne ukončená")
-                print("Pre ukončenia aplikácie zadajte 'e'")
                 break
 
 
-            elif type == 253:
-                break
+
 
 
             elif type == 254: #KeepAlive not arrived
@@ -508,13 +491,8 @@ class Receiver:
                 print("\nKomunikácia prerušená! - kvôli keeepalive\n")
                 break
 
-
             elif type == 255:
-                time.sleep(0.5)
-                print("\n\nKomunikácia ukončená!\n")
-                print("Prajete si znova začať komunikáciu ? (y/n) ", end="")
-                packet_creator.changeInputMode(0)
-                break
+                print("\nKomunikácia prerušená! - kvôli neaktivite\n")
 
 
 
@@ -576,43 +554,17 @@ class Sender:
 
     def exceeded_waiting_for_ACK(self, SEQ):
         time.sleep(packet_creator.get_timeForPacket())
+
         if SEQ >= self.arrived_SEQ: ##nedošiel packet
-
-            l = len(self.thresholdForPackets)
-            m = packet_creator.get_thresholdKA()
-
-            if l == m or l == m - 1:
-                if l == m:
-                    self.thresholdForPackets.pop(0)
-                self.thresholdForPackets.append(SEQ)
-
-                equal = True
-                for i in range(1, m):
-                    if self.thresholdForPackets[i - 1] != self.thresholdForPackets[1]:
-                        equal = False
-                        break
-
-                if equal:
-                    print("Spojenie prerušené v dôsledku " + str(packet_creator.get_thresholdKA()) + "x neprijatia paketu do " + str(packet_creator.get_timeForPacket()) + "s")
-                    receiver.stop_waiting()
-
-                else:
-                    self.send_again_packet(SEQ)
-
-            else:
-                self.thresholdForPackets.append(SEQ)
-                self.send_again_packet(SEQ)
-
-
+            self.send_again_packet(SEQ)
 
     def send_again_packet(self, SEQ):
         #zistím ktorý paket treba znova poslať podľa SEQ
 
-
         for packet in self.packetsToSend:
             if SEQ == packet_creator.get_SEQ(packet):
                 self.send_and_corrupt_packet(packet)
-                threading.Thread(target=self.exceeded_waiting_for_ACK, args=(self.arrived_SEQ,)).start()
+                threading.Thread(target=self.exceeded_waiting_for_ACK, args=(SEQ,)).start()
                 break
 
 
@@ -622,7 +574,7 @@ class Sender:
             self.packetsInWindow.append(self.packetsToSend[self.lastIndexInWindow])
 
             self.send_and_corrupt_packet(self.packetsInWindow[-1])
-            threading.Thread(target=self.exceeded_waiting_for_ACK, args=(self.arrived_SEQ,)).start()
+            threading.Thread(target=self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(self.packetsToSend[-1]),)).start()
 
         self.packetsInWindow.pop(0)
 
@@ -657,8 +609,6 @@ class Sender:
 
     def send_prepared_packets(self):
 
-        self.thresholdForPackets = []
-
         ##corrupt data
         numOfPackets = len(self.packetsToSend)
         numForCorrupt = int(packet_creator.get_prcOfCorrupted() * numOfPackets)
@@ -672,8 +622,10 @@ class Sender:
         else:
             win = self.window
 
+        print(self.corrupted)
+        print("VEĽKOSŤ OKNA JE - " + str(win))
 
-        self.arrived_SEQ = packet_creator.get_SEQ(self.packetsToSend[0]) + (win - 1)
+        self.arrived_SEQ = packet_creator.get_SEQ(self.packetsToSend[0])
 
         self.packetsInWindow = []
 
@@ -690,7 +642,7 @@ class Sender:
             if i % 32 == 0:
                 time.sleep(0.2)
             self.send_and_corrupt_packet(protocol)
-            threading.Thread(target=self.exceeded_waiting_for_ACK, args=(self.arrived_SEQ,)).start()
+            threading.Thread(target=self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(protocol),)).start()
 
 
         self.sentFirtsPackets = True
@@ -788,7 +740,6 @@ class Sender:
 
     def end_com(self):
         self.stop_keepAlive()
-        receiver.cancel_waiting(0)
         fin_p = packet_creator.create_FIN(packet_creator.ppSEQ())
         packet_creator.sendPacket(fin_p, packet_creator.get_TARGET_addr())
         #vypnuť WHILE ČAKANIA NA PAKET MORE
@@ -832,8 +783,7 @@ class Sender:
                 self.send_packet(packet_creator.create_KeepAlive(packet_creator.ppSEQ()))
 
             if not self.keepAlive_arrived and packet_creator.enabled_KeepAlive():
-                print("\nKomunikácia prerušená! - po " + str(packet_creator.get_thresholdKA()) + " neprijatých KeepAlive paketoch\n")
-                receiver.stop_waiting()
+                print("\nKomunikácia prerušená!\n")
                 break
 
 
@@ -912,9 +862,6 @@ def thread_waiting_for_input():
 
                 if sender.establish_com():
                     threading.Thread(target=receiver.restart_listening).start()
-            if s == "n":
-                receiver.cancel_waiting(1)
-                exit()
 
 
         elif inputMode == 1: #poslat subor
@@ -928,10 +875,9 @@ def thread_waiting_for_input():
                 inputMode = 3
 
             if s == "e": #konec
+                print("Koneeeeec")
                 sender.end_com()
-                receiver.cancel_waiting(1)
-                print("Komunikácia úspešne ukončená")
-                break
+                exit()
 
             if s == "r": #refresh file
                 print("Súbor 'config.txt' sa znova načítal\n")
@@ -960,7 +906,6 @@ def thread_waiting_for_input():
             sender.set_target_path(s)
             inputMode = 1
             sender.send_file()
-    print("Konec WHILE cyklu")
 
 
 
@@ -986,6 +931,7 @@ inputMode = 0
 
 t_input = threading.Thread(target=thread_waiting_for_input)
 #t2 = threading.Thread(target=receiver.waiting_for_packet)
+cancel_t2 = threading.Thread(target=receiver.cancel_waiting)
 
 print("Prajete si začať komunikáciu ? (y/n) ", end="")
 #t2.start()
