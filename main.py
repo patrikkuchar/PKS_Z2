@@ -219,7 +219,7 @@ class Receiver:
         hostname = socket.gethostname()
         self.MY_IP = socket.gethostbyname(hostname)
 
-        self.MY_IP = "127.0.0.1"
+        ##self.MY_IP = "127.0.0.1"
         self.MY_PORT = port
 
         self.writeInfo()
