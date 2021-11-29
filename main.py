@@ -221,7 +221,7 @@ class Receiver:
         hostname = socket.gethostname()
         self.MY_IP = socket.gethostbyname(hostname)
 
-        ##self.MY_IP = "127.0.0.1"
+        self.MY_IP = "127.0.0.1"
         self.MY_PORT = port
 
         self.writeInfo()
@@ -323,11 +323,12 @@ class Receiver:
             self.cancel_keepAlive_waiting()
 
     def exceeded_waiting_for_packet(self, SEQ):
-
         #time.sleep(0.5)
         time.sleep(packet_creator.get_timeForPacket())
 
-        if SEQ >= self.arrived_SEQ:
+        if SEQ != self.arrived_SEQ:
+            print("SEQ: " + str(SEQ))
+            print("arrived: " + str(self.arrived_SEQ))
             print("Spojenie prerušené v dôsledku neprijatia paketu do " + str(packet_creator.get_timeForPacket()) + "s")
             exit()
 
@@ -377,12 +378,14 @@ class Receiver:
 
             if type >= 1 and type <= 5:
 
+                self.arrived_SEQ = SEQ
+
                 if packet_creator.checkCRC(data):
                     ack_P = packet_creator.create_ACK(SEQ)
                     self.send_packet(ack_P, addr)
 
-                    #if type != 3 or type != 5:
-                        #threading.Thread(target=self.exceeded_waiting_for_packet, args=(SEQ,)).start()
+                    if type != 3 or type != 5:
+                        threading.Thread(target=self.exceeded_waiting_for_packet, args=(SEQ,)).start()
 
                     if type == 1:  # INF
                         if len(self.path) == 0:
@@ -446,10 +449,14 @@ class Receiver:
 
 
             elif type == 6: #ACK
+                if not sender.sentFirtsPackets:
+                    time.sleep(0.1)
                 sender.set_arrived_SEQ(SEQ)
                 sender.move_window()
 
             elif type == 7: #nACK
+                if not sender.sentFirtsPackets:
+                    time.sleep(0.1)
                 sender.set_arrived_SEQ(SEQ)
                 sender.send_again_packet(SEQ)
 
@@ -486,7 +493,7 @@ class Receiver:
 
             elif type == 254: #KeepAlive not arrived
                 #print("KeepAlive packet nedorazil")
-                print("\nKomunikácia prerušená!\n")
+                print("\nKomunikácia prerušená! - kvôli keeepalive\n")
                 break
 
 
@@ -518,7 +525,7 @@ class Sender:
         MY_IP = socket.gethostbyname(hostname)
         packet_creator.set_MY_addr(MY_IP, MY_PORT)
 
-        self.window = 4
+        self.window = 10
 
 
         self.packetsToSend = []
@@ -547,19 +554,19 @@ class Sender:
         else:
             self.send_packet(body)
 
-    def exceeded_waiting_for_ACK(self, SEQ):
-        time.sleep(packet_creator.get_timeForPacket())
+    #def exceeded_waiting_for_ACK(self, SEQ):
+        #time.sleep(packet_creator.get_timeForPacket())
 
-        if SEQ > self.arrived_SEQ: ##nedošiel packet
-            self.send_again_packet(SEQ)
+        #if SEQ > self.arrived_SEQ: ##nedošiel packet
+            #self.send_again_packet(SEQ)
 
     def send_again_packet(self, SEQ):
         #zistím ktorý paket treba znova poslať podľa SEQ
-        
+
         for packet in self.packetsToSend:
             if SEQ == packet_creator.get_SEQ(packet):
                 self.send_and_corrupt_packet(packet)
-                threading.Thread(target=self.exceeded_waiting_for_ACK, args=(SEQ,)).start()
+                #threading.Thread(target=self.exceeded_waiting_for_ACK, args=(SEQ,)).start()
                 break
 
 
@@ -569,7 +576,7 @@ class Sender:
             self.packetsInWindow.append(self.packetsToSend[self.lastIndexInWindow])
 
             self.send_and_corrupt_packet(self.packetsInWindow[-1])
-            threading.Thread(target=self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(self.packetsToSend[-1]),)).start()
+            #threading.Thread(target=self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(self.packetsToSend[-1]),)).start()
 
         self.packetsInWindow.pop(0)
 
@@ -588,6 +595,7 @@ class Sender:
             packet_creator.changeInputMode(-1)
             self.packetsToSend = []
             time.sleep(packet_creator.get_timeForKA())
+            #prajete si poslať správu ...
             packet_creator.changeInputMode(1)
             self.start_keepAlive()
 
@@ -610,24 +618,30 @@ class Sender:
         else:
             win = self.window
 
+        print(self.corrupted)
+        print("VEĽKOSŤ OKNA JE - " + str(win))
 
         self.arrived_SEQ = packet_creator.get_SEQ(self.packetsToSend[0]) - 1
 
         self.packetsInWindow = []
+
+
         for i in range(win):
             self.packetsInWindow.append(self.packetsToSend[i])
 
         self.lastIndexInWindow = win - 1
 
+        self.sentFirtsPackets = False
 
         #pošlem všetky pakety z okna
         for i, protocol in enumerate(self.packetsInWindow):
             if i % 32 == 0:
-                time.sleep(0.3)
+                time.sleep(0.2)
             self.send_and_corrupt_packet(protocol)
-            threading.Thread(target=self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(protocol),)).start()
+            #threading.Thread(target=self.exceeded_waiting_for_ACK, args=(packet_creator.get_SEQ(protocol),)).start()
 
 
+        self.sentFirtsPackets = True
 
 
 

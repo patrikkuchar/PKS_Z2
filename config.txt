@@ -1,4 +1,4 @@
-Maximálny čas čakania na potvrdzujúci paket (s);0.5
+Maximálny čas čakania na potvrdzujúci paket (s);2
 Interval odosielania KeepAlive (s);5
 Threshold KeepAlive;3
 Veľkosť Window;4
