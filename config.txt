@@ -3,6 +3,6 @@ Interval odosielania KeepAlive (s);5
 Threshold KeepAlive;3
 Veľkosť Window;4
 Koľko perc paketov sa má poškodiť (0-1);0.1
-Ukázať KeepAlive pakety (0/1);1
+Ukázať KeepAlive pakety (0/1);0
 Ukázať prichádzajúce pakety (0/1);1
 Ukázať odosielajúce paktey (0/1);1

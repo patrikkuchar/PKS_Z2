@@ -336,7 +336,6 @@ class Receiver:
             while i < packet_creator.get_thresholdKA() - 1:
                 time.sleep(packet_creator.get_timeForPacket())
                 i += 1
-                print(i)
                 if not (SEQ >= self.arrived_SEQ):
                     break
 
@@ -625,7 +624,6 @@ class Sender:
         self.packetsInWindow.pop(0)
 
         if len(self.packetsInWindow) == 0: ##všetky pakety odoslané
-            time.sleep(60)
 
             if packet_creator.get_type(self.packetsToSend[-1]) == 3: #PSH_F
                 psh_f = packet_creator.create_PSH_F(packet_creator.ppSEQ())
@@ -966,9 +964,6 @@ def thread_waiting_for_input():
 
 
 
-
-#C:/PKS_na_poslanie/test.png
-#C:/PKS_vystup
 
 
 
