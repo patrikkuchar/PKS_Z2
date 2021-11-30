@@ -333,23 +333,14 @@ class Receiver:
 
     ## thread čakajúci na INF/PSH/MSG pakety
     def exceeded_waiting_for_packet(self, SEQ):
-        ##pri zavolaní má SEQ rovnakú hodnotu ako arrived_SEQ, po zmrazení by malo byť arrived_SEQ väčšie (dôjde ďalší paket)
-        ##ak nie je tak ešte n-krát zmrazí, kde po každom zmrazení to znova kontrolu, keď sa ani potom nezväčší ak ukončí komunikáciu
+        ## po n * m sekundách skontroluje či sa zväčšilo arrived_SEQ číslo (n - čas čakania na paket; m - threshold)
         SEQ += 1
-        time.sleep(packet_creator.get_timeForPacket())
+        time.sleep(packet_creator.get_timeForPacket() * packet_creator.get_thresholdKA())
 
         if SEQ >= self.arrived_SEQ:
-            i = 0
-            while i < packet_creator.get_thresholdKA() - 1:
-                time.sleep(packet_creator.get_timeForPacket())
-                i += 1
-                if not (SEQ >= self.arrived_SEQ):
-                    break
-
-            if i == packet_creator.get_thresholdKA() - 1:
-                print("Spojenie prerušené v dôsledku " + str(packet_creator.get_thresholdKA()) + "x neprijatia paketu.")
-                self.stop_waiting()
-                exit()
+            print("Spojenie prerušené v dôsledku " + str(packet_creator.get_thresholdKA()) + "x neprijatia paketu.")
+            self.stop_waiting()
+            exit()
 
     ##v tejto funkcii sa prijíma väčšina paketov (aj vysielača aj prijímača)
     def waiting_for_packet(self):
