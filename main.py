@@ -289,7 +289,7 @@ class Receiver:
         print("Súbor bol úspešne prijatý.")
         print("Veľkosť súboru: " + str(len(file)) + "B")
         print("Počet fragmentov: " + str(len(self.path) + len(self.file)))
-        print("Počet dát v jednom fragmente: " + str(len(self.file[0]) - 7))
+        print("Počet dát v jednom fragmente: " + str(len(self.file[0]) - 5))
         print("Čas prenosu súboru: " + str(round(end_time_recvFile - self.start_time_recvFile, 4)) + "s")
         print("Cesta k súboru: '" + path + "'")
 
