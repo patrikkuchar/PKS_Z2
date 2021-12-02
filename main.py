@@ -288,12 +288,11 @@ class Receiver:
         f = open(folderPath + path, "w+b")
         f.write(file)
         f.close()
-        end_time_recvFile = time.time()
         print("Súbor bol úspešne prijatý.")
         print("Veľkosť súboru: " + str(len(file)) + "B")
         print("Počet fragmentov: " + str(len(self.path) + len(self.file)))
         print("Počet dát v jednom fragmente: " + str(len(self.file[0]) - 5))
-        print("Čas prenosu súboru: " + str(round(end_time_recvFile - self.start_time_recvFile, 4)) + "s")
+        print("Čas prenosu súboru: " + str(round(self.end_time_recvFile - self.start_time_recvFile, 4)) + "s")
         print("Cesta k súboru: '" + folderPath + path + "'")
 
         self.path = []
@@ -432,8 +431,9 @@ class Receiver:
 
             elif type == 3: #PSH_F
                 self.arrived_SEQ += 10 #fix aby to určite nepadlo
+                self.end_time_recvFile = time.time()
                 time.sleep(0.5)
-                print("Zadajte absolútnu cestu k priečinku, do ktorého sa má súbor uložiť: ", end=" ")
+                print("Zadajte absolútnu cestu k priečinku, do ktorého sa má súbor uložiť: ", end="")
                 packet_creator.changeInputMode(4)
 
 
