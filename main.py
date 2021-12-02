@@ -432,8 +432,9 @@ class Receiver:
 
             elif type == 3: #PSH_F
                 self.arrived_SEQ += 10 #fix aby to určite nepadlo
+                time.sleep(0.1)
+                print("Zadajte absolútnu cestu k priečinku, do ktorého sa má súbor uložiť: ", end=" ")
                 packet_creator.changeInputMode(4)
-                print("Zadajte absolútnu cestu k priečinku, do ktorého sa má súbor uložiť:", end=" ")
 
 
             elif type == 5: #MSG_F
@@ -724,7 +725,7 @@ class Sender:
         ##cyklus získa reversnutý názov súboru
         filename = ''
         for c in self.local_path[::-1]:
-            if c == '/':
+            if c == '/' or c == '\\':
                 break
             filename += c
 
