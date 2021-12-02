@@ -432,7 +432,7 @@ class Receiver:
 
             elif type == 3: #PSH_F
                 self.arrived_SEQ += 10 #fix aby to určite nepadlo
-                time.sleep(0.1)
+                time.sleep(0.5)
                 print("Zadajte absolútnu cestu k priečinku, do ktorého sa má súbor uložiť: ", end=" ")
                 packet_creator.changeInputMode(4)
 
