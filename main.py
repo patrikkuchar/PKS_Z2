@@ -814,7 +814,7 @@ class Sender:
 
     def exceeded_waiting_for_SYN_packet(self):
         ## ak žiaden paket nebol prijatý, inputMode ostal nezmenený - 0
-        if inputMode != 1:
+        if inputMode == 0:
             ## nACK paket na seba
             nACK_p = packet_creator.create_nACK(0)
             self.sock.sendto(nACK_p, packet_creator.get_MY_addr())
