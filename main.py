@@ -273,7 +273,7 @@ class Receiver:
         return arr
 
     ## funkcia uloží súbor a vyhodnotí prenos
-    def saveData(self):
+    def saveData(self, folderPath):
         path = ""
         file = b""
 
@@ -282,7 +282,10 @@ class Receiver:
         for part in self.file:
             file += self.getDataFromPacket(part, False)
 
-        f = open(path, "w+b")
+        if folderPath[-1] != '/':
+            folderPath += "/"
+
+        f = open(folderPath + path, "w+b")
         f.write(file)
         f.close()
         end_time_recvFile = time.time()
@@ -291,7 +294,7 @@ class Receiver:
         print("Počet fragmentov: " + str(len(self.path) + len(self.file)))
         print("Počet dát v jednom fragmente: " + str(len(self.file[0]) - 5))
         print("Čas prenosu súboru: " + str(round(end_time_recvFile - self.start_time_recvFile, 4)) + "s")
-        print("Cesta k súboru: '" + path + "'")
+        print("Cesta k súboru: '" + folderPath + path + "'")
 
         self.path = []
         self.file = []
@@ -429,8 +432,9 @@ class Receiver:
 
             elif type == 3: #PSH_F
                 self.arrived_SEQ += 10 #fix aby to určite nepadlo
-                self.saveData()
-                print("\nAko si prajete pokračovať:\n 'm' - Poslať správu\n 'f' - Poslať súbor\n 'e' - Ukončiť komunikáciu\n")
+                packet_creator.changeInputMode(4)
+                print("Zadajte absolútnu cestu k priečinku, do ktorého sa má súbor uložiť:", end=" ")
+
 
             elif type == 5: #MSG_F
                 self.arrived_SEQ += 10 #fix aby to určite nepadlo
@@ -508,8 +512,6 @@ class Sender:
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET,  # Internet
                              socket.SOCK_DGRAM)  # UDP
-
-
 
         self.local_path = ""
         self.target_path = ""
@@ -616,7 +618,6 @@ class Sender:
 
                 end_time_sendFile = time.time()
                 print("Súbor úspešne odoslaný")
-                print("Cesta k súboru na uzle prijímača: '" + self.add_filename() + "'")
                 print("Čas odoslania: " + str(round(end_time_sendFile - self.start_time_sendFile, 4)) + "s")
 
             else:
@@ -719,18 +720,16 @@ class Sender:
         packet_creator.changeInputMode(-1) #pri switchnuti -1 input z klávesnice nič nespraví
 
     ##funkcia pridá k ceste na uloženie súboru názov súboru
-    def add_filename(self):
+    def get_filename(self):
         ##cyklus získa reversnutý názov súboru
-        filename = ""
+        filename = ''
         for c in self.local_path[::-1]:
             if c == '/':
                 break
             filename += c
 
-        ##prevráti názov a priradí ho k ceste
-        if self.target_path[-1] == '/':
-            return self.target_path + filename[::-1]
-        return self.target_path + "/" + filename[::-1]
+        ##prevráti názov
+        return filename[::-1]
 
     ##odosielanie súboru
     def send_file(self):
@@ -744,7 +743,7 @@ class Sender:
         file.close()
 
         ## príprava cesty
-        array_of_data = self.split_data(self.add_filename(), size)
+        array_of_data = self.split_data(self.get_filename(), size)
         for one_data in array_of_data:
             self.packetsToSend.append(packet_creator.create_INF(packet_creator.ppSEQ(), one_data))
 
@@ -906,14 +905,15 @@ def thread_waiting_for_input():
 
         elif inputMode == 3: #cesta k suboru
             sender.set_local_path(s)
-
-            print("Zadajte absolútnu cestu k priečinku, v ktorom sa má uložiť odoslaný súbor: ", end="")
-            inputMode = 4
+            sender.send_file()
+            inputMode = 1
 
         elif inputMode == 4: #kde sa ma súbor uložiť
-            sender.set_target_path(s)
-            inputMode = 1 #switch na mod odosielania
-            sender.send_file()
+            receiver.saveData(s)
+            print("\nAko si prajete pokračovať:\n 'm' - Poslať správu\n 'f' - Poslať súbor\n 'e' - Ukončiť komunikáciu\n")
+            #sender.set_target_path(s)
+            inputMode = 1
+            #sender.send_file()
 
 
 
